@@ -15,6 +15,7 @@ currentObj = nil
 
 MW_CATEGORY = 1
 CAT_CATEGORY = 2
+OBJ_CATEGORY = 16
 DING_ONCE = true
 
 WATTS = {}
@@ -69,8 +70,7 @@ function love.load()
   objects.mwdoor.shape = love.physics.newRectangleShape(300, 300)
   objects.mwdoor.fixture = love.physics.newFixture(objects.mwdoor.body, objects.mwdoor.shape)
   objects.mwdoor.fixture:setFriction(0.1)
-  objects.mwdoor.fixture:setCategory(MW_CATEGORY)
-  objects.mwdoor.fixture:setGroupIndex(NON_COLLIDE_GRP)
+  objects.mwdoor.fixture:setCategory(OBJ_CATEGORY, MW_CATEGORY)
   local x, y = objects.mwbody.body:getWorldCenter()
   objects.mwdoor.mwjoint = love.physics.newPrismaticJoint( objects.mwbody.body, objects.mwdoor.body, x, y, 1, 0, false )
   objects.mwdoor.mwjoint:setLimitsEnabled(true)
@@ -87,7 +87,7 @@ function love.load()
   objects.mwwatts.shape = love.physics.newCircleShape(KNOBS_SIZE)
   objects.mwwatts.fixture = love.physics.newFixture(objects.mwwatts.body, objects.mwwatts.shape)
   objects.mwwatts.fixture:setFriction(1.0)
-  objects.mwwatts.fixture:setCategory(MW_CATEGORY)
+  objects.mwwatts.fixture:setCategory(OBJ_CATEGORY, MW_CATEGORY)
   --objects.mwwatts.fixture:setGroupIndex(NON_COLLIDE_GRP)
   objects.mwwatts.mwjoint = love.physics.newRevoluteJoint( objects.mwwatts.body, objects.mwbody.body, 800 - 200 - 100 / 2, 600 - KITCHEN_HEIGHT - 300 + 50, false )
   objects.mwwatts.mousejoint = love.physics.newMouseJoint(objects.mwwatts.body, love.mouse.getPosition())
@@ -99,7 +99,7 @@ function love.load()
   objects.mwtime.shape = love.physics.newCircleShape(KNOBS_SIZE)
   objects.mwtime.fixture = love.physics.newFixture(objects.mwtime.body, objects.mwtime.shape)
   objects.mwtime.fixture:setFriction(1.0)
-  objects.mwtime.fixture:setCategory(MW_CATEGORY)
+  objects.mwtime.fixture:setCategory(OBJ_CATEGORY, MW_CATEGORY)
   --objects.mwtime.fixture:setGroupIndex(NON_COLLIDE_GRP)
   objects.mwtime.mwjoint = love.physics.newRevoluteJoint( objects.mwtime.body, objects.mwbody.body, 800 - 200 - 100 / 2, 600 - KITCHEN_HEIGHT - 300 + 150, false )
   objects.mwtime.mousejoint = love.physics.newMouseJoint(objects.mwtime.body, love.mouse.getPosition())
@@ -111,6 +111,7 @@ function love.load()
   objects.catbody.body:setUserData(objects.catbody)
   objects.catbody.shape = love.physics.newRectangleShape(120, 70)
   objects.catbody.fixture = love.physics.newFixture(objects.catbody.body, objects.catbody.shape)
+  objects.catbody.fixture:setCategory(OBJ_CATEGORY, CAT_CATEGORY)
   --objects.catbody.fixture:setGroupIndex(NON_COLLIDE_GRP)
   objects.catbody.image = love.graphics.newImage("cat_body.png")
   objects.cathead = {}
@@ -118,6 +119,7 @@ function love.load()
   objects.cathead.body:setUserData(objects.cathead) -- TODO MIGHT PRODUCE A BUG -- not catbody, but cathead
   objects.cathead.shape = love.physics.newRectangleShape(100, 70)
   --objects.cathead.fixture = love.physics.newFixture(objects.cathead.body, objects.cathead.shape)
+  --objects.cathead.fixture:setCategory(OBJ_CATEGORY, CAT_CATEGORY)
   --objects.cathead.fixture:setGroupIndex(NON_COLLIDE_GRP)
   objects.cathead.catjoint = love.physics.newRevoluteJoint( objects.cathead.body, objects.catbody.body, 650, 100, false )
   --objects.cathead.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cathead.body, 650, 100, 650, 100, 30, false )
@@ -131,6 +133,12 @@ function love.update(dt)
   local x, y = love.mouse.getPosition()
   x = screen2world(x, tX)
   y = screen2world(y, tY)
+
+  if (currentObj ~= nil) then
+    DEBUG = currentObj
+  end
+
+  -- MW door
   if (currentObj == objects.mwdoor) then
     if objects.mwdoor.open then
       objects.mwdoor.body:applyLinearImpulse(-400, 0)
@@ -143,9 +151,6 @@ function love.update(dt)
     end
   end
   -- MW controls
-  if (currentObj ~= nil) then
-    DEBUG = currentObj
-  end
   if (currentObj == objects.mwwatts) then
     local angle = math.floor(math.abs(math.deg(objects.mwwatts.body:getAngle())) + 0.5)
     if (angle == 0 or angle == 360) then
@@ -179,7 +184,7 @@ function love.update(dt)
 
   -- Drag objects
   if (currentObj == objects.catbody or currentObj == objects.cathead) then
-    currentObj.body:setPosition(x, y)
+    --currentObj.body:setPosition(x, y)
   end
 
   updateTime(dt)
