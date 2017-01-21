@@ -36,7 +36,6 @@ function love.load()
   tX = 0
   tY = 0
   scaleFactor = 1.0
-  love.resize(gameWidth, gameHeight)
 
   love.physics.setMeter(METER_IN_PX)
   world = love.physics.newWorld(0, FALLBESCHLEUNIGUNG * METER_IN_PX, true)
@@ -121,9 +120,10 @@ function love.load()
   --objects.cathead.fixture = love.physics.newFixture(objects.cathead.body, objects.cathead.shape)
   --objects.cathead.fixture:setGroupIndex(NON_COLLIDE_GRP)
   objects.cathead.catjoint = love.physics.newRevoluteJoint( objects.cathead.body, objects.catbody.body, 650, 100, false )
-  objects.cathead.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cathead.body, 650, 100, 650, 100, 30, false )
+  --objects.cathead.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cathead.body, 650, 100, 650, 100, 30, false )
   objects.cathead.image = love.graphics.newImage("cat_head.png")
 
+  love.resize(love.graphics.getDimensions())
 end
 
 function love.update(dt)
