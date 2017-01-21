@@ -13,9 +13,12 @@ DEGREE_PER_S = 30
 
 currentObj = nil
 
-MW_CATEGORY = 1
-CAT_CATEGORY = 2
-OBJ_CATEGORY = 16
+CATEGORY_OBJS = bit.lshift(1, 0)
+CATEGORY_GROUND = bit.lshift(1, 1)
+
+GROUP_DONT_COLLIDE = bit.lshift(-1, 0)
+GROUP_ALWAYS_COLLIDE = bit.lshift(1, 0)
+
 DING_ONCE = true
 
 WATTS = {}
@@ -24,8 +27,6 @@ WATTS[360] = 200
 WATTS[90] = 400
 WATTS[180] = 600
 WATTS[270] = 700
-
-NON_COLLIDE_GRP = -31337
 
 DEBUG = 0
 
@@ -39,29 +40,43 @@ function love.load()
   scaleFactor = 1.0
 
   love.physics.setMeter(METER_IN_PX)
-  world = love.physics.newWorld(0, FALLBESCHLEUNIGUNG * METER_IN_PX, true)
+  world = love.physics.newWorld(0, FALLBESCHLEUNIGUNG * METER_IN_PX, false)
   power = 0
+
+  effect = love.graphics.newShader [[
+      extern number time;
+      vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 pixel_coords)
+      {
+          vec4 c = Texel(texture, texture_coords);
+          return vec4((c.r + abs(sin(time)) / 2.0), c.g, c.b, 1.0);
+      }
+  ]]
 
   objects = {}
 
   objects.kitchen = {}
-  objects.kitchen.body = love.physics.newBody(world, 800 / 2, 600 - KITCHEN_HEIGHT / 2, "static")
-  objects.kitchen.shape = love.physics.newRectangleShape(800, KITCHEN_HEIGHT)
+  objects.kitchen.body = love.physics.newBody(world, gameWidth / 2, gameHeight - KITCHEN_HEIGHT / 2, "static")
+  objects.kitchen.shape = love.physics.newRectangleShape(4 * gameWidth, KITCHEN_HEIGHT)
   objects.kitchen.fixture = love.physics.newFixture(objects.kitchen.body, objects.kitchen.shape)
-  objects.kitchen.fixture:setFriction(1.0)
+  objects.kitchen.fixture:setFilterData(CATEGORY_GROUND, CATEGORY_OBJS, GROUP_ALWAYS_COLLIDE)
+  objects.kitchen.body:setMass(70)
+  --objects.kitchen.fixture:setFriction(1.0)
   objects.kitchen.background = love.graphics.newImage("kueche.png")
+  objects.kitchen.music = love.audio.newSource("Just_Microwave_It_Titlesong.mp3")
+  objects.kitchen.music:setVolume(1.0)
 
   objects.mwbody = {}
-  objects.mwbody.body = love.physics.newBody(world, gameWidth / 2, 600 - MW_HEIGHT / 2 - KITCHEN_HEIGHT, "static")
+  objects.mwbody.body = love.physics.newBody(world, gameWidth / 2, gameHeight - MW_HEIGHT / 2 - KITCHEN_HEIGHT, "static")
   objects.mwbody.body:setMass(MW_MASS_IN_KG)
   objects.mwbody.shape = love.physics.newRectangleShape(MW_WIDTH, MW_HEIGHT)
   objects.mwbody.fixture = love.physics.newFixture(objects.mwbody.body, objects.mwbody.shape)
   objects.mwbody.fixture:setFriction(1.0)
-  objects.mwbody.fixture:setCategory(MW_CATEGORY)
-  objects.mwbody.fixture:setGroupIndex(NON_COLLIDE_GRP)
+  --objects.mwbody.fixture:setCategory(MW_CATEGORY)
+  --objects.mwbody.fixture:setGroupIndex(NON_COLLIDE_GRP)
   objects.mwbody.image = love.graphics.newImage("mwbody.png")
-  --objects.mwbody.ding = love.sound.newSoundData("ding.mp3")
-  objects.mwbody.ding = love.audio.newSource("gj2017_jmi_powerup.mp3", "static")
+  objects.mwbody.ding = love.audio.newSource("ggj_mwi_MWping.mp3", "static")
+  objects.mwbody.ding:setVolume(1.0)
+  objects.mwbody.on = false
 
   objects.mwdoor = {}
   objects.mwdoor.body = love.physics.newBody(world, 700 / 2, 600 - MW_HEIGHT / 2 - KITCHEN_HEIGHT, "dynamic")
@@ -70,7 +85,7 @@ function love.load()
   objects.mwdoor.shape = love.physics.newRectangleShape(300, 300)
   objects.mwdoor.fixture = love.physics.newFixture(objects.mwdoor.body, objects.mwdoor.shape)
   objects.mwdoor.fixture:setFriction(0.1)
-  objects.mwdoor.fixture:setCategory(OBJ_CATEGORY, MW_CATEGORY)
+  --objects.mwdoor.fixture:setCategory(OBJ_CATEGORY, MW_CATEGORY)
   local x, y = objects.mwbody.body:getWorldCenter()
   objects.mwdoor.mwjoint = love.physics.newPrismaticJoint( objects.mwbody.body, objects.mwdoor.body, x, y, 1, 0, false )
   objects.mwdoor.mwjoint:setLimitsEnabled(true)
@@ -78,7 +93,10 @@ function love.load()
   --objects.mwdoor.mwmaxjoint = love.physics.newRopeJoint( objects.mwbody.body, objects.mwdoor.body, x, y, x, y, 300, false )
   objects.mwdoor.image = love.graphics.newImage("mwdoor.png")
   objects.mwdoor.body:applyLinearImpulse(-400, 0)
+  objects.mwdoor.slide = love.audio.newSource("ggj_mwi_tuerauf_2.mp3", "static")
+  objects.mwdoor.slide:setVolume(1.0)
   objects.mwdoor.open = false
+  objects.mwdoor.gone = false
 
   objects.mwwatts = {}
   objects.mwwatts.body = love.physics.newBody(world, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 50, "static")
@@ -86,7 +104,8 @@ function love.load()
   objects.mwwatts.body:setAngle(0)
   objects.mwwatts.shape = love.physics.newCircleShape(KNOBS_SIZE)
   objects.mwwatts.fixture = love.physics.newFixture(objects.mwwatts.body, objects.mwwatts.shape)
-  objects.mwwatts.fixture:setFriction(1.0)
+  objects.mwwatts.fixture:setGroupIndex(GROUP_DONT_COLLIDE)
+  --objects.mwwatts.fixture:setFriction(1.0)
   --objects.mwwatts.fixture:setCategory(OBJ_CATEGORY, MW_CATEGORY)
   --objects.mwwatts.fixture:setGroupIndex(NON_COLLIDE_GRP)
   objects.mwwatts.mwjoint = love.physics.newRevoluteJoint( objects.mwwatts.body, objects.mwbody.body, 800 - 200 - 100 / 2, 600 - KITCHEN_HEIGHT - 300 + 50, false )
@@ -98,7 +117,8 @@ function love.load()
   objects.mwtime.body:setUserData(objects.mwtime)
   objects.mwtime.shape = love.physics.newCircleShape(KNOBS_SIZE)
   objects.mwtime.fixture = love.physics.newFixture(objects.mwtime.body, objects.mwtime.shape)
-  objects.mwtime.fixture:setFriction(1.0)
+  objects.mwtime.fixture:setGroupIndex(GROUP_DONT_COLLIDE)
+  --objects.mwtime.fixture:setFriction(1.0)
   --objects.mwtime.fixture:setCategory(OBJ_CATEGORY, MW_CATEGORY)
   --objects.mwtime.fixture:setGroupIndex(NON_COLLIDE_GRP)
   objects.mwtime.mwjoint = love.physics.newRevoluteJoint( objects.mwtime.body, objects.mwbody.body, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 150, false )
@@ -106,47 +126,56 @@ function love.load()
   objects.mwtime.image = love.graphics.newImage("mwknob.png")
 
   -- Cat
-  objects.catbody = {}
-  objects.catbody.body = love.physics.newBody(world, 600, 100, "static")
-  objects.catbody.body:setUserData(objects.catbody)
-  objects.catbody.shape = love.physics.newRectangleShape(120, 70)
-  objects.catbody.fixture = love.physics.newFixture(objects.catbody.body, objects.catbody.shape)
-  objects.catbody.fixture:setCategory(CAT_CATEGORY)
-  objects.catbody.mousejoint = love.physics.newMouseJoint(objects.catbody.body, love.mouse.getPosition())
-  --objects.catbody.fixture:setGroupIndex(NON_COLLIDE_GRP)
-  objects.catbody.image = love.graphics.newImage("cat_body.png")
-  objects.cathead = {}
-  objects.cathead.body = love.physics.newBody(world, 650, 100, "dynamic")
-  objects.cathead.body:setUserData(objects.cathead) -- TODO MIGHT PRODUCE A BUG -- not catbody, but cathead
-  objects.cathead.shape = love.physics.newRectangleShape(100, 70)
-  objects.cathead.fixture = love.physics.newFixture(objects.cathead.body, objects.cathead.shape)
-  --objects.cathead.fixture:setCategory(OBJ_CATEGORY, CAT_CATEGORY)
-  --objects.cathead.fixture:setGroupIndex(NON_COLLIDE_GRP)
-  objects.cathead.catjoint = love.physics.newRevoluteJoint( objects.cathead.body, objects.catbody.body, 650, 100, false )
+  --objects.catbody = {}
+  --objects.catbody.body = love.physics.newBody(world, 700, 100, "dynamic")
+  --objects.catbody.body:setUserData(objects.catbody)
+  --objects.catbody.shape = love.physics.newRectangleShape(120, 70)
+  --objects.catbody.fixture = love.physics.newFixture(objects.catbody.body, objects.catbody.shape)
+  --objects.catbody.fixture:setFilterData(CATEGORY_OBJS, CATEGORY_OBJS, GROUP_DONT_COLLIDE)
+  --objects.catbody.mousejoint = love.physics.newMouseJoint(objects.catbody.body, love.mouse.getPosition())
+  ----objects.catbody.fixture:setGroupIndex(NON_COLLIDE_GRP)
+  --objects.catbody.image = love.graphics.newImage("cat_body.png")
+  --objects.cathead = {}
+  --objects.cathead.body = love.physics.newBody(world, 650, 100, "dynamic")
+  --objects.cathead.body:setUserData(objects.cathead) -- TODO MIGHT PRODUCE A BUG -- not catbody, but cathead
+  --objects.cathead.shape = love.physics.newRectangleShape(100, 70)
+  --objects.cathead.fixture = love.physics.newFixture(objects.cathead.body, objects.cathead.shape)
+  ----objects.cathead.fixture:setGroupIndex(NON_COLLIDE_GRP)
+  --objects.cathead.catjoint = love.physics.newRevoluteJoint( objects.cathead.body, objects.catbody.body, 650, 100, false )
   --objects.cathead.mousejoint = love.physics.newMouseJoint( objects.cathead.body, love.mouse.getPosition())
-  objects.cathead.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cathead.body, 650, 100, 650, 100, 10, false )
-  objects.cathead.image = love.graphics.newImage("cat_head.png")
-  objects.cattail = {}
-  objects.cattail.body = love.physics.newBody(world, 545, 120, "dynamic")
-  objects.cattail.body:setUserData(objects.cattail)
-  objects.cattail.shape = love.physics.newRectangleShape(22, 54)
-  objects.cattail.fixture = love.physics.newFixture(objects.cattail.body, objects.cattail.shape)
-  objects.cattail.catjoint = love.physics.newRevoluteJoint( objects.cattail.body, objects.catbody.body, 545, 120, false )
-  objects.cattail.image = love.graphics.newImage("cat_tail.png")
-  objects.catback = {}
-  objects.catback.body = love.physics.newBody(world, 570, 140, "dynamic")
-  objects.catback.body:setUserData(objects.catback)
-  objects.catback.shape = love.physics.newRectangleShape(22, 54)
-  objects.catback.fixture = love.physics.newFixture(objects.catback.body, objects.catback.shape)
-  objects.catback.catjoint = love.physics.newRevoluteJoint( objects.catback.body, objects.catbody.body, 570, 140, false )
-  objects.catback.image = love.graphics.newImage("cat_legs.png")
-  objects.catfront = {}
-  objects.catfront.body = love.physics.newBody(world, 630, 140, "dynamic")
-  objects.catfront.body:setUserData(objects.catfront)
-  objects.catfront.shape = love.physics.newRectangleShape(22, 54)
-  objects.catfront.fixture = love.physics.newFixture(objects.catfront.body, objects.catfront.shape)
-  objects.catfront.catjoint = love.physics.newRevoluteJoint( objects.catfront.body, objects.catbody.body, 630, 140, false )
-  objects.catfront.image = love.graphics.newImage("cat_legs.png")
+  --objects.cathead.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cathead.body, 650, 100, 650, 100, 10, false )
+  --objects.cathead.image = love.graphics.newImage("cat_head.png")
+  --objects.cattail = {}
+  --objects.cattail.body = love.physics.newBody(world, 545, 120, "dynamic")
+  --objects.cattail.body:setUserData(objects.cattail)
+  --objects.cattail.shape = love.physics.newRectangleShape(22, 54)
+  --objects.cattail.fixture = love.physics.newFixture(objects.cattail.body, objects.cattail.shape)
+  --objects.cattail.catjoint = love.physics.newRevoluteJoint( objects.cattail.body, objects.catbody.body, 545, 120, false )
+  --objects.cattail.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cattail.body, 545, 120, 545, 120, 0, true )
+  --objects.cattail.image = love.graphics.newImage("cat_tail.png")
+  --objects.catback = {}
+  --objects.catback.body = love.physics.newBody(world, 570, 140, "dynamic")
+  --objects.catback.body:setUserData(objects.catback)
+  --objects.catback.shape = love.physics.newRectangleShape(22, 54)
+  --objects.catback.fixture = love.physics.newFixture(objects.catback.body, objects.catback.shape)
+  --objects.catback.catjoint = love.physics.newRevoluteJoint( objects.catback.body, objects.catbody.body, 570, 140, false )
+  --objects.catback.image = love.graphics.newImage("cat_legs.png")
+  --objects.catfront = {}
+  --objects.catfront.body = love.physics.newBody(world, 630, 140, "dynamic")
+  --objects.catfront.body:setUserData(objects.catfront)
+  --objects.catfront.shape = love.physics.newRectangleShape(22, 54)
+  --objects.catfront.fixture = love.physics.newFixture(objects.catfront.body, objects.catfront.shape)
+  --objects.catfront.catjoint = love.physics.newRevoluteJoint( objects.catfront.body, objects.catbody.body, 630, 140, false )
+  --objects.catfront.image = love.graphics.newImage("cat_legs.png")
+
+  objects.waste = {}
+  objects.waste.body = love.physics.newBody(world, 700, gameHeight - 122 / 2 - KITCHEN_HEIGHT * 2, "dynamic")
+  objects.waste.body:setUserData(objects.waste)
+  objects.waste.body:setMass(50)
+  objects.waste.shape = love.physics.newRectangleShape(68, 122)
+  objects.waste.fixture = love.physics.newFixture(objects.waste.body, objects.waste.shape)
+  objects.waste.fixture:setFilterData(CATEGORY_OBJS, CATEGORY_GROUND, bit.bor(GROUP_DONT_COLLIDE, GROUP_ALWAYS_COLLIDE))
+  objects.waste.image = love.graphics.newImage("nuc_waste.png")
 
   objects.reset = {}
   objects.reset.body = love.physics.newBody(world, 16, 16, "static")
@@ -154,7 +183,32 @@ function love.load()
   objects.reset.shape = love.physics.newRectangleShape(32, 32)
   objects.reset.fixture = love.physics.newFixture(objects.reset.body, objects.reset.shape)
 
+  setupShaders()
+  love.audio.play(objects.kitchen.music)
+
   love.resize(love.graphics.getDimensions())
+end
+
+function setupShaders()
+  -- from
+  -- https://love2d.org/forums/viewtopic.php?t=3733&start=270
+  if love.system.getOS() == 'Android' or love.system.getOS() == 'iOS' then
+    objects.shaders = {}
+    objects.shaders.hole = {shader = love.graphics.newShader('hole_m.glsl')}
+    objects.shaders.hole.shader:send('size',{gameWidth,gameHeight})
+    objects.shaders.hole.shader:send('pos',{100,100})
+    objects.shaders.hole.shader:send('eventH',love.window.toPixels(20))
+    objects.shaders.hole.shader:send('escapeR',love.window.toPixels(20)*1.5)
+    objects.shaders.hole.shader:send('holeColor',{0,0,0})
+  else
+    objects.shaders = {}
+    objects.shaders.hole = {shader = love.graphics.newShader('hole.glsl')}
+    objects.shaders.hole.shader:send('size',{gameWidth,gameHeight})
+    objects.shaders.hole.shader:send('pos',{100,100})
+    objects.shaders.hole.shader:send('eventH',400)
+    objects.shaders.hole.shader:send('escapeR',400*1.5)
+    objects.shaders.hole.shader:send('holeColor',{0,0,0})
+  end
 end
 
 function resetObjs()
@@ -162,6 +216,8 @@ function resetObjs()
   objects.mwbody.body:setLinearVelocity(0, 0)
   objects.mwbody.body:setAngle( 0 )
   objects.mwbody.body:setType("static")
+  objects.mwbody.on = false
+  objects.mwdoor.gone = true
   objects.mwwatts.body:setPosition(gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 50)
   objects.mwwatts.body:setAngle(0)
   objects.mwwatts.body:setLinearVelocity(0, 0)
@@ -171,14 +227,22 @@ function resetObjs()
   objects.mwtime.body:setLinearVelocity(0, 0)
   objects.mwtime.body:setType("static")
 
-  objects.catbody.body:setPosition(600, 100)
-  objects.catbody.body:setLinearVelocity(0, 0)
-  objects.catbody.body:setType("static")
+  --objects.catbody.body:setPosition(600, 100)
+  --objects.catbody.body:setLinearVelocity(0, 0)
+  --objects.catbody.body:setType("dynamic")
+
+  objects.waste.body:setPosition(700, gameHeight - 122 / 2 - KITCHEN_HEIGHT)
+  objects.waste.body:setAngle(0)
+  objects.waste.body:setLinearVelocity(0, 0)
+  objects.waste.body:setType("dynamic")
+
   currentObj = nil
   power = 0
+  t = 0
   DING_ONCE = true
 end
 
+local t = 0
 function love.update(dt)
   world:update(dt) --this puts the world into motion
   local x, y = love.mouse.getPosition()
@@ -192,10 +256,12 @@ function love.update(dt)
   -- MW door
   if (currentObj == objects.mwdoor) then
     if objects.mwdoor.open then
+      love.audio.play(objects.mwdoor.slide)
       objects.mwdoor.body:applyLinearImpulse(-400, 0)
       objects.mwdoor.open = false
       currentObj = nil
     else
+      love.audio.play(objects.mwdoor.slide)
       objects.mwdoor.body:applyLinearImpulse(400, 0)
       objects.mwdoor.open = true
       currentObj = nil
@@ -234,11 +300,15 @@ function love.update(dt)
   end
 
   -- Drag objects
-  if (currentObj == objects.catbody
-      or currentObj == objects.cathead
-      or currentObj == objects.cattail
-      or currentObj == objects.catback
-      or currentObj == objects.catfront) then
+  --if (currentObj == objects.catbody
+  --    or currentObj == objects.cathead
+  --    or currentObj == objects.cattail
+  --    or currentObj == objects.catback
+  --    or currentObj == objects.catfront) then
+  --  currentObj.body:setPosition(x, y)
+  --  currentObj.body:setLinearVelocity(0, 0)
+  --end
+  if (currentObj == objects.waste) then
     currentObj.body:setPosition(x, y)
     currentObj.body:setLinearVelocity(0, 0)
   end
@@ -247,14 +317,18 @@ function love.update(dt)
   if (currentObj == objects.reset) then
     resetObjs()
   end
-
   updateTime(dt)
+  if objects.mwbody.on and objects.mwdoor.gone then
+    t = t + dt
+    effect:send("time", t)
+  end
 end
 
 function updateTime(dt_in_s)
   if (objects.mwdoor.open) then
     local angle = math.abs(math.deg(objects.mwtime.body:getAngle()))
     if (angle > 0) then
+      objects.mwbody.on = true
       objects.mwtime.body:setAngle(math.rad(angle - DEGREE_PER_S * dt_in_s))
       updatePower(dt_in_s)
       angle = math.deg(objects.mwtime.body:getAngle())
@@ -282,6 +356,8 @@ function blowUp()
   objects.mwbody.body:setType("dynamic")
   objects.mwwatts.body:setType("dynamic")
   objects.mwtime.body:setType("dynamic")
+  objects.mwbody.on = false
+  power = 0
   if (not objects.mwdoor.mwjoint:isDestroyed()) then
     objects.mwdoor.mwjoint:destroy()
   end
@@ -297,11 +373,14 @@ function love.mousepressed( x, y, button, istouch )
 end
 
 function love.mousereleased( x, y, button, istouch )
-  if (currentObj == objects.catbody
-      or currentObj == objects.cathead
-      or currentObj == objects.cattail
-      or currentObj == objects.catback
-      or currentObj == objects.catfront) then
+  --if (currentObj == objects.catbody
+  --    or currentObj == objects.cathead
+  --    or currentObj == objects.cattail
+  --    or currentObj == objects.catback
+  --    or currentObj == objects.catfront) then
+  --  currentObj = nil
+  --end
+  if (currentObj == objects.waste) then
     currentObj = nil
   end
 end
@@ -311,38 +390,36 @@ function love.draw()
 
   love.graphics.push("all")
 
+  --love.graphics.setShader(objects.shaders.hole.shader)
+
   --love.graphics.setWireframe( true )
   love.graphics.translate(tX, tY)
   love.graphics.scale(scaleFactor, scaleFactor)
 
   local b = objects.kitchen
   local bgScale = math.max(gameWidth / b.background:getWidth(), gameHeight / b.background:getHeight())
+  if (objects.mwbody.on and objects.mwdoor.gone) then
+    love.graphics.setShader(effect)
+  end
   love.graphics.draw(b.background, 0, 0, 0, bgScale, bgScale, gameWidth / b.background:getWidth(), 0)
+  love.graphics.setShader()
 
-  b = objects.mwbody
-  love.graphics.draw(b.image, b.body:getX(), b.body:getY(), b.body:getAngle(), 1, 1, b.image:getWidth()/2, b.image:getHeight()/2)
-
-  b = objects.mwwatts
-  love.graphics.draw(b.image, b.body:getX(), b.body:getY(), b.body:getAngle(), 1, 1, b.image:getWidth()/2, b.image:getHeight()/2)
-
-  b = objects.mwtime
-  love.graphics.draw(b.image, b.body:getX(), b.body:getY(), b.body:getAngle(), 1, 1, b.image:getWidth()/2, b.image:getHeight()/2)
+  renderImg(objects.mwbody)
+  renderImg(objects.mwwatts)
+  renderImg(objects.mwtime)
 
   -- Cat
-  b = objects.catbody
-  love.graphics.draw(b.image, b.body:getX(), b.body:getY(), b.body:getAngle(), 1, 1, b.image:getWidth()/2, b.image:getHeight()/2)
-  b = objects.cattail
-  love.graphics.draw(b.image, b.body:getX(), b.body:getY(), b.body:getAngle(), 1, 1, b.image:getWidth()/2, b.image:getHeight()/2)
-  b = objects.catfront
-  love.graphics.draw(b.image, b.body:getX(), b.body:getY(), b.body:getAngle(), 1, 1, b.image:getWidth()/2, b.image:getHeight()/2)
-  b = objects.catback
-  love.graphics.draw(b.image, b.body:getX(), b.body:getY(), b.body:getAngle(), 1, 1, b.image:getWidth()/2, b.image:getHeight()/2)
-  b = objects.cathead
-  love.graphics.draw(b.image, b.body:getX(), b.body:getY(), b.body:getAngle(), 1, 1, b.image:getWidth()/2, b.image:getHeight()/2)
+  --renderImg(objects.catbody)
+  --renderImg(objects.cattail)
+  --renderImg(objects.catfront)
+  --renderImg(objects.catback)
+  --renderImg(objects.cathead)
+
+  -- Waste
+  renderImg(objects.waste)
 
   -- Door
-  b = objects.mwdoor
-  love.graphics.draw(b.image, b.body:getX(), b.body:getY(), b.body:getAngle(), 1, 1, b.image:getWidth()/2, b.image:getHeight()/2)
+  renderImg(objects.mwdoor)
 
   -- Debug output
   love.graphics.print( "Power: "..tostring(power), 10, 0 )
@@ -355,9 +432,10 @@ function love.draw()
   love.graphics.print( "Mouse: ("..x..", "..y..")", 10, 80)
   love.graphics.print( "DEBUG: "..tostring(DEBUG), 10, 100)
 
-  love.graphics.setColor(139, 69, 19, 0.0)
+  love.graphics.setColor(139, 69, 19, 255)
   love.graphics.polygon("fill", objects.kitchen.body:getWorldPoints(objects.kitchen.shape:getPoints()))
 
+  -- Letterboxes
   love.graphics.setColor(0, 0, 0, 255)
   local inverseScaleFactor = 1.0 / scaleFactor
   if tX == 0 then
@@ -368,10 +446,15 @@ function love.draw()
     love.graphics.rectangle("fill", screen2world(tX + scaleFactor * gameWidth, tX), 0, tX * 4, gameHeight)
   end
 
+  -- Reset "button"
   love.graphics.setColor(0, 255, 0, 255)
   love.graphics.polygon("fill", objects.reset.body:getWorldPoints(objects.reset.shape:getPoints()))
 
   love.graphics.pop()
+end
+
+function renderImg(obj)
+  love.graphics.draw(obj.image, obj.body:getX(), obj.body:getY(), obj.body:getAngle(), 1, 1, obj.image:getWidth()/2, obj.image:getHeight()/2)
 end
 
 function love.resize(w, h)
@@ -406,14 +489,6 @@ function getObjCB(fixture)
     local body = fixture:getBody()
     if (fixture:testPoint(x, y)) then
         currentObj = body:getUserData()
-        if (currentObj == objects.catbody
-            or currentObj == objects.cathead
-            or currentObj == objects.cattail
-            or currentObj == objects.catback
-            or currentObj == objects.catfront) then
-          --objects.catbody.body:setType("dynamic")
-          --objects.cathead.body:setType("dynamic")
-        end
         return false
     end
   --end
