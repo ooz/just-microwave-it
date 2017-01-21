@@ -60,7 +60,7 @@ function love.load()
   objects.mwbody.fixture:setGroupIndex(NON_COLLIDE_GRP)
   objects.mwbody.image = love.graphics.newImage("mwbody.png")
   --objects.mwbody.ding = love.sound.newSoundData("ding.mp3")
-  objects.mwbody.ding = love.audio.newSource("ding.mp3", "static")
+  objects.mwbody.ding = love.audio.newSource("gj2017_jmi_powerup.mp3", "static")
 
   objects.mwdoor = {}
   objects.mwdoor.body = love.physics.newBody(world, 700 / 2, 600 - MW_HEIGHT / 2 - KITCHEN_HEIGHT, "dynamic")
