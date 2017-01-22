@@ -12,6 +12,7 @@ KITCHEN_HEIGHT = 50
 DEGREE_PER_S = 30
 
 currentObj = nil
+objectsInMW = {}
 
 CATEGORY_OBJS = bit.lshift(1, 0)
 CATEGORY_GROUND = bit.lshift(1, 1)
@@ -24,6 +25,9 @@ GROUP_DONT_COLLIDE = bit.lshift(-1, 0)
 GROUP_ALWAYS_COLLIDE = bit.lshift(1, 0)
 
 DING_ONCE = true
+BOOM_ONCE = true
+MEOW_ONCE = true
+WOBB_ONCE = true
 
 WATTS = {}
 WATTS[0] = 200
@@ -36,6 +40,8 @@ POWER_THRESHOLDS = {}
 POWER_THRESHOLDS["cat"] = 800
 POWER_THRESHOLDS["waste"] = 2000
 POWER_THRESHOLDS["mwmini"] = 4000
+
+EFFECT_VOLUME = 0.75
 
 DEBUG = 0
 
@@ -75,7 +81,9 @@ function love.load()
   objects.kitchen.background = love.graphics.newImage("kueche.png")
   --objects.kitchen.music = love.audio.newSource("Just_Microwave_It_Titlesong.mp3")
   objects.kitchen.music = love.audio.newSource("Just_Microwave_It_Loop.mp3")
-  objects.kitchen.music:setVolume(1.0)
+  objects.kitchen.music:setVolume(0.5)
+  objects.kitchen.boom = love.audio.newSource("ggj_mwi_boom.mp3")
+  objects.kitchen.boom:setVolume(1.0)
 
   -- Cat
   objects.catbody = {}
@@ -97,8 +105,8 @@ function love.load()
   objects.cathead.catjoint = love.physics.newRevoluteJoint( objects.cathead.body, objects.catbody.body, 650, 100, false )
   objects.cathead.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cathead.body, 650, 100, 650, 100, 10, false )
   objects.cathead.image = love.graphics.newImage("cat_head.png")
-  objects.cathead.meow = love.audio.newSource("Just_Microwave_It_Loop.mp3")
-  objects.cathead.meow:setVolume(1.0)
+  objects.cathead.meow = love.audio.newSource("ggj_mwi_cat_meow.mp3")
+  objects.cathead.meow:setVolume(EFFECT_VOLUME)
   objects.cattail = {}
   objects.cattail.name = "cat"
   objects.cattail.body = love.physics.newBody(world, 545, 120, "dynamic")
@@ -139,6 +147,8 @@ function love.load()
   objects.waste.fixture = love.physics.newFixture(objects.waste.body, objects.waste.shape, 5)
   objects.waste.fixture:setFilterData(CATEGORY_OBJS, MASK_OBJECTS, 0)
   objects.waste.image = love.graphics.newImage("nuc_waste.png")
+  objects.waste.wobb = love.audio.newSource("ggj2017_jmi_atommuell_wobble.mp3")
+  objects.waste.wobb:setVolume(EFFECT_VOLUME)
 
   objects.mwmini = {}
   objects.mwmini.name = "mwmini"
@@ -161,8 +171,12 @@ function love.load()
   objects.mwbody.fixture:setFilterData(CATEGORY_MICROWAVE, CATEGORY_GROUND, 0)
   objects.mwbody.image = love.graphics.newImage("mwbody.png")
   objects.mwbody.ding = love.audio.newSource("ggj_mwi_MWping.mp3", "static")
-  objects.mwbody.ding:setVolume(1.0)
+  objects.mwbody.ding:setVolume(EFFECT_VOLUME)
   objects.mwbody.on = false
+
+  objects.mwdummy = {}
+  objects.mwdummy.name = "mwdummy"
+  objects.mwdummy.body = love.physics.newBody(world, gameWidth / 2 - 100, gameHeight - KITCHEN_HEIGHT - MW_HEIGHT / 2, "static")
 
   objects.mwdoor = {}
   objects.mwdoor.name = "mwdoor"
@@ -181,7 +195,7 @@ function love.load()
   objects.mwdoor.image = love.graphics.newImage("mwdoor.png")
   objects.mwdoor.body:applyLinearImpulse(-4000, 0)
   objects.mwdoor.slide = love.audio.newSource("ggj_mwi_tuerauf_2.mp3", "static")
-  objects.mwdoor.slide:setVolume(1.0)
+  objects.mwdoor.slide:setVolume(EFFECT_VOLUME)
   objects.mwdoor.toopen = false
   objects.mwdoor.gone = false
 
@@ -227,7 +241,7 @@ function love.load()
   setupShaders()
   --objects.kitchen.music:setPitch( 6 )
   objects.kitchen.music:setLooping( true )
-  --love.audio.play(objects.kitchen.music)
+  love.audio.play(objects.kitchen.music)
 
   love.resize(love.graphics.getDimensions())
 end
@@ -238,16 +252,16 @@ function setupShaders()
   if love.system.getOS() == 'Android' or love.system.getOS() == 'iOS' then
     objects.shaders = {}
     objects.shaders.hole = {shader = love.graphics.newShader('hole_m.glsl')}
-    objects.shaders.hole.shader:send('size',{gameWidth,gameHeight})
-    objects.shaders.hole.shader:send('pos',{100,100})
+    objects.shaders.hole.shader:send('size',{gameWidth, gameHeight})
+    objects.shaders.hole.shader:send('pos',{gameWidth / 2, gameHeight / 2})
     objects.shaders.hole.shader:send('eventH',love.window.toPixels(20))
     objects.shaders.hole.shader:send('escapeR',love.window.toPixels(20)*1.5)
     objects.shaders.hole.shader:send('holeColor',{0,0,0})
   else
     objects.shaders = {}
     objects.shaders.hole = {shader = love.graphics.newShader('hole.glsl')}
-    objects.shaders.hole.shader:send('size',{gameWidth,gameHeight})
-    objects.shaders.hole.shader:send('pos',{100,100})
+    objects.shaders.hole.shader:send('size',{gameWidth, gameHeight})
+    objects.shaders.hole.shader:send('pos',{gameWidth / 2, gameHeight / 2})
     objects.shaders.hole.shader:send('eventH',400)
     objects.shaders.hole.shader:send('escapeR',400*1.5)
     objects.shaders.hole.shader:send('holeColor',{0,0,0})
@@ -288,6 +302,9 @@ function resetObjs()
   power = 0
   t = 0
   DING_ONCE = true
+  BOOM_ONCE = true
+  MEOW_ONCE = true
+  WOBB_ONCE = true
 
   success = love.window.showMessageBox( "Thanks", "Just Microwave It!\
 By Konstantin Freybe and Oliver Zscheyge", "info", true )
@@ -360,7 +377,18 @@ function love.update(dt)
       or currentObj == objects.waste
       or currentObj == objects.mwmini) then
     currentObj.body:setPosition(x, y)
-    if currentObj.name ~= "cat" then currentObj.body:setLinearVelocity(0, 0) end
+    if currentObj.name == "cat" then
+      if MEOW_ONCE then
+        objects.cathead.meow:play()
+        MEOW_ONCE = false
+      end
+    else
+      if currentObj.name == "waste" then
+        objects.waste.wobb:play()
+        WOBB_ONCE = false
+      end
+      currentObj.body:setLinearVelocity(0, 0)
+    end
   end
 
   -- Reset
@@ -368,11 +396,19 @@ function love.update(dt)
     resetObjs()
   end
   updateTime(dt)
+  t = t + dt
   if objects.mwbody.on and objects.mwdoor.gone then
-    t = t + dt
+
     effect:send("time", t)
   end
 
+end
+
+function updateBlackHole(tAbs)
+  objects.shaders.hole.shader:send("eventH", tAbs * 100)
+  objects.shaders.hole.shader:send("escapeR", tAbs * 100)
+  objects.shaders.hole.shader:send("size", {screenWidth, screenHeight})
+  objects.shaders.hole.shader:send("pos", {screenWidth / 2, screenHeight / 2})
 end
 
 function updateTime(dt_in_s)
@@ -383,7 +419,7 @@ function updateTime(dt_in_s)
       objects.mwtime.body:setAngle(math.rad(angle - DEGREE_PER_S * dt_in_s))
       updatePower(dt_in_s)
       angle = math.deg(objects.mwtime.body:getAngle())
-      if (angle < 0) then
+      if (angle <= 0) then
         if (DING_ONCE) then
           objects.mwbody.ding:play()
           DING_ONCE = false
@@ -404,7 +440,7 @@ function updatePower(dt_in_s)
 end
 
 function blowUp()
-  objects.mwbody.body:setType("dynamic")
+  --objects.mwbody.body:setType("dynamic")
   objects.mwwatts.body:setType("dynamic")
   objects.mwtime.body:setType("dynamic")
   objects.mwbody.on = false
@@ -413,7 +449,11 @@ function blowUp()
     objects.mwdoor.mwjoint:destroy()
   end
   objects.mwdoor.body:applyLinearImpulse(-400, -1000)
-  objects.mwbody.body:applyLinearImpulse(0, -4000)
+  --objects.mwbody.body:applyLinearImpulse(0, -4000)
+  if (BOOM_ONCE) then
+    objects.kitchen.boom:play()
+    BOOM_ONCE = false
+  end
 end
 
 function love.mousepressed( x, y, button, istouch )
@@ -422,6 +462,8 @@ end
 
 function love.mousereleased( x, y, button, istouch )
     currentObj = nil
+    MEOW_ONCE = true
+    WOBB_ONCE = true
 end
 
 function love.draw()
@@ -477,6 +519,10 @@ function love.draw()
   --love.graphics.setColor(139, 69, 19, 255)
   --love.graphics.polygon("fill", objects.kitchen.body:getWorldPoints(objects.kitchen.shape:getPoints()))
 
+  -- Reset "button"
+  love.graphics.setShader()
+  renderImg(objects.reset)
+
   -- Letterboxes
   love.graphics.setColor(0, 0, 0, 255)
   local inverseScaleFactor = 1.0 / scaleFactor
@@ -487,17 +533,6 @@ function love.draw()
     love.graphics.rectangle("fill", -tX * 2, 0, tX * 2, gameHeight)
     love.graphics.rectangle("fill", screen2world(tX + scaleFactor * gameWidth, tX), 0, tX * 4, gameHeight)
   end
-
-  local touches = love.touch.getTouches()
-
-  for i, id in ipairs(touches) do
-      local x, y = love.touch.getPosition(id)
-      love.graphics.setColor(255, 0, 0, 255)
-      love.graphics.circle("fill", screen2world(x, tX), screen2world(y, tY), 20)
-  end
-
-  -- Reset "button"
-  renderImg(objects.reset)
 
   love.graphics.pop()
 end
@@ -530,11 +565,6 @@ end
 
 function getObjCB(fixture)
   local body = fixture:getBody()
-  if body:getType() == "dynamic" then
-    print("dynamic obj")
-  elseif body:getType() == "static" then
-    print("static obj")
-  end
   local x, y = love.mouse.getPosition()
   x = screen2world(x, tX)
   y = screen2world(y, tY)
