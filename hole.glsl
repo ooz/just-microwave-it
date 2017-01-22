@@ -10,7 +10,7 @@ vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 pixel_coords) {
 	float escapeR = escapeR/size.x;
 
 	if(distance(texture_coords.xy,pos.xy) < eventH) {
-		return vec4(holeColor.rgb,1);
+		return vec4(holeColor.rgb, 0);
 	} else if(distance(texture_coords.xy,pos.xy) <= escapeR+eventH) { //magic
 		vec2 guide = vec2(pos.xy-texture_coords.xy);
 		float e = 1-((length(guide) - eventH)/escapeR);
