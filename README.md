@@ -8,6 +8,8 @@ This game is about microwaving stuff. Please do not nuke the Universe. Thanks!
 
 ## Creators
 
+### TEAM EY
+
 * Konstantin Freybe (Music & Sound)
 * Oliver Zscheyge (Programming & Art)
 
