@@ -4,6 +4,8 @@ Global Game Jam 2017 entry. Topic: __Waves__
 
 This game is about microwaving stuff. Please do not nuke the Universe. Thanks!
 
+![Just Microwave It](screenshots/jmi_promo_screen.png)
+
 ## Creators
 
 * Konstantin Freybe (Music & Sound)
