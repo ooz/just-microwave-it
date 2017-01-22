@@ -222,6 +222,7 @@ function love.load()
   objects.reset.body:setUserData(objects.reset)
   objects.reset.shape = love.physics.newRectangleShape(32, 32)
   objects.reset.fixture = love.physics.newFixture(objects.reset.body, objects.reset.shape)
+  objects.reset.image = love.graphics.newImage("rewind.png")
 
   setupShaders()
   --objects.kitchen.music:setPitch( 6 )
@@ -462,15 +463,15 @@ function love.draw()
   renderImg(objects.mwdoor)
 
   -- Debug output
-  love.graphics.print( "Power: "..tostring(power), 10, 0 )
-  if currentObj ~= nil then
-    love.graphics.print( "Obj present", 10, 20 )
-  end
-  local x, y = love.mouse.getPosition()
-  love.graphics.print( math.deg(objects.mwwatts.body:getAngle()), 10, 40 )
-  love.graphics.print( math.deg(objects.mwtime.body:getAngle()), 10, 60)
-  love.graphics.print( "Mouse: ("..x..", "..y..")", 10, 80)
-  love.graphics.print( "DEBUG: "..tostring(DEBUG), 10, 100)
+  --love.graphics.print( "Power: "..tostring(power), 10, 0 )
+  --if currentObj ~= nil then
+  --  love.graphics.print( "Obj present", 10, 20 )
+  --end
+  --local x, y = love.mouse.getPosition()
+  --love.graphics.print( math.deg(objects.mwwatts.body:getAngle()), 10, 40 )
+  --love.graphics.print( math.deg(objects.mwtime.body:getAngle()), 10, 60)
+  --love.graphics.print( "Mouse: ("..x..", "..y..")", 10, 80)
+  --love.graphics.print( "DEBUG: "..tostring(DEBUG), 10, 100)
 
   -- Ground
   --love.graphics.setColor(139, 69, 19, 255)
@@ -496,8 +497,7 @@ function love.draw()
   end
 
   -- Reset "button"
-  love.graphics.setColor(0, 255, 0, 255)
-  love.graphics.polygon("fill", objects.reset.body:getWorldPoints(objects.reset.shape:getPoints()))
+  renderImg(objects.reset)
 
   love.graphics.pop()
 end
