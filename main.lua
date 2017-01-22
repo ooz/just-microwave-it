@@ -342,7 +342,7 @@ function love.update(dt)
   end
   if (currentObj == objects.mwtime) then
     local angle = math.floor(math.abs(math.deg(objects.mwtime.body:getAngle())) + 0.5)
-    if ((angle >= 0 and angle < 55) or angle == 360) then
+    if ((angle >= 0 and angle < 55) or angle >= 360) then
       objects.mwtime.body:setAngle(math.rad(60))
     elseif (angle >= 55 and angle < 115) then
       objects.mwtime.body:setAngle(math.rad(120))
