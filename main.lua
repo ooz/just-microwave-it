@@ -61,6 +61,7 @@ function love.load()
   objects.kitchen.name = "kitchenplate"
   objects.kitchen.body = love.physics.newBody(world, gameWidth / 2, gameHeight - KITCHEN_HEIGHT / 2, "static")
   objects.kitchen.body:setMass(70)
+  objects.kitchen.body:setUserData(objects.kitchen)
   objects.kitchen.shape = love.physics.newRectangleShape(4 * gameWidth, KITCHEN_HEIGHT)
   objects.kitchen.fixture = love.physics.newFixture(objects.kitchen.body, objects.kitchen.shape, 5)
   objects.kitchen.fixture:setFilterData(CATEGORY_GROUND, CATEGORY_OBJS, GROUP_ALWAYS_COLLIDE)
@@ -73,6 +74,7 @@ function love.load()
   objects.mwbody = {}
   objects.mwbody.name = "mwbody"
   objects.mwbody.body = love.physics.newBody(world, gameWidth / 2, gameHeight - KITCHEN_HEIGHT - MW_HEIGHT / 2, "static")
+  objects.mwbody.body:setUserData(objects.mwbody)
   objects.mwbody.body:setMass(MW_MASS_IN_KG)
   objects.mwbody.shape = love.physics.newRectangleShape(MW_WIDTH, MW_HEIGHT)
   objects.mwbody.fixture = love.physics.newFixture(objects.mwbody.body, objects.mwbody.shape)
@@ -87,13 +89,13 @@ function love.load()
 
   objects.mwdoor = {}
   objects.mwdoor.name = "mwdoor"
-  objects.mwdoor.body = love.physics.newBody(world, 700 / 2, 600 - MW_HEIGHT / 2 - KITCHEN_HEIGHT, "dynamic")
+  objects.mwdoor.body = love.physics.newBody(world, (gameWidth - 100) / 2, gameHeight - KITCHEN_HEIGHT - MW_HEIGHT / 2, "dynamic")
   objects.mwdoor.body:setMass(MW_DOOR_MASS_IN_KG)
   objects.mwdoor.body:setUserData(objects.mwdoor)
   objects.mwdoor.shape = love.physics.newRectangleShape(300, 300)
   objects.mwdoor.fixture = love.physics.newFixture(objects.mwdoor.body, objects.mwdoor.shape)
   objects.mwdoor.fixture:setFriction(0.01)
-  objects.mwdoor.fixture:setFilterData(CATEGORY_MICROWAVE, 0, 0)
+  objects.mwdoor.fixture:setFilterData(bit.bor(CATEGORY_MICROWAVE, CATEGORY_MWCONTROLS), 0, 0)
   local x, y = objects.mwbody.body:getWorldCenter()
   objects.mwdoor.mwjoint = love.physics.newPrismaticJoint( objects.mwbody.body, objects.mwdoor.body, x, y, 1, 0, false )
   objects.mwdoor.mwjoint:setLimitsEnabled(true)
@@ -113,17 +115,14 @@ function love.load()
   objects.mwwatts.body:setAngle(0)
   objects.mwwatts.body:setLinearVelocity(0, 0)
   objects.mwwatts.shape = love.physics.newCircleShape(KNOBS_SIZE)
-  objects.mwwatts.fixture = love.physics.newFixture(objects.mwwatts.body, objects.mwwatts.shape, 5)
+  objects.mwwatts.fixture = love.physics.newFixture(objects.mwwatts.body, objects.mwwatts.shape, 1)
   objects.mwwatts.fixture:setFriction(0.01)
-  --objects.mwwatts.fixture:setFilterData(CATEGORY_MWCONTROLS, CATEGORY_OBJS, GROUP_ALWAYS_COLLIDE)
   objects.mwwatts.fixture:setFilterData(bit.bor(CATEGORY_MICROWAVE, CATEGORY_MWCONTROLS), 0, 0)
-  --objects.mwwatts.fixture:setSensor( true )
-  --objects.mwwatts.fixture:setGroupIndex(GROUP_DONT_COLLIDE)
-  --objects.mwwatts.fixture:setFriction(1.0)
-  --objects.mwwatts.fixture:setCategory(OBJ_CATEGORY, MW_CATEGORY)
-  --objects.mwwatts.fixture:setGroupIndex(NON_COLLIDE_GRP)
-  objects.mwwatts.mwjoint = love.physics.newRevoluteJoint( objects.mwwatts.body, objects.mwbody.body, 800 - 200 - 100 / 2, 600 - KITCHEN_HEIGHT - 300 + 50, false )
-  --objects.mwwatts.mousejoint = love.physics.newMouseJoint(objects.mwwatts.body, love.mouse.getPosition())
+  objects.mwwatts.mwjoint = love.physics.newRevoluteJoint( objects.mwwatts.body, objects.mwbody.body, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 50, true )
+  x, y = love.mouse.getPosition()
+  x = screen2world(x, tX)
+  y = screen2world(y, tY)
+  objects.mwwatts.mousejoint = love.physics.newMouseJoint(objects.mwwatts.body, x, y)
   objects.mwwatts.image = love.graphics.newImage("mwknob.png")
 
   objects.mwtime = {}
@@ -133,17 +132,11 @@ function love.load()
   objects.mwtime.body:setAngle(0)
   objects.mwtime.body:setLinearVelocity(0, 0)
   objects.mwtime.shape = love.physics.newCircleShape(KNOBS_SIZE)
-  objects.mwtime.fixture = love.physics.newFixture(objects.mwtime.body, objects.mwtime.shape, 5)
+  objects.mwtime.fixture = love.physics.newFixture(objects.mwtime.body, objects.mwtime.shape, 1)
   objects.mwtime.fixture:setFriction(0.01)
   objects.mwtime.fixture:setFilterData(bit.bor(CATEGORY_MICROWAVE, CATEGORY_MWCONTROLS), 0, 0)
-
-  --objects.mwtime.fixture:setGroupIndex(GROUP_DONT_COLLIDE)
-  --objects.mwtime.fixture:setSensor( true )
-  --objects.mwtime.fixture:setFriction(1.0)
-  --objects.mwtime.fixture:setCategory(OBJ_CATEGORY, MW_CATEGORY)
-  --objects.mwtime.fixture:setGroupIndex(NON_COLLIDE_GRP)
-  objects.mwtime.mwjoint = love.physics.newRevoluteJoint( objects.mwtime.body, objects.mwbody.body, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 150, false )
-  objects.mwtime.mousejoint = love.physics.newMouseJoint(objects.mwtime.body, love.mouse.getPosition())
+  objects.mwtime.mwjoint = love.physics.newRevoluteJoint( objects.mwtime.body, objects.mwbody.body, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 150, true )
+  objects.mwtime.mousejoint = love.physics.newMouseJoint(objects.mwtime.body, x, y)
   objects.mwtime.image = love.graphics.newImage("mwknob.png")
 
   -- Cat
@@ -316,10 +309,6 @@ function love.update(dt)
   x = screen2world(x, tX)
   y = screen2world(y, tY)
 
-  if (currentObj ~= nil) then
-    DEBUG = currentObj
-  end
-
   -- MW door
   if (currentObj == objects.mwdoor) then
     if objects.mwdoor.open then
@@ -335,6 +324,8 @@ function love.update(dt)
     end
   end
   -- MW controls
+  objects.mwwatts.mousejoint:setTarget(x, y)
+  objects.mwtime.mousejoint:setTarget(x, y)
   if (currentObj == objects.mwwatts) then
     local angle = math.floor(math.abs(math.deg(objects.mwwatts.body:getAngle())) + 0.5)
     if (angle == 0 or angle == 360) then
