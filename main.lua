@@ -105,9 +105,12 @@ function love.load()
   objects.mwdoor.body:applyLinearImpulse(-4000, 0)
   objects.mwdoor.slide = love.audio.newSource("ggj_mwi_tuerauf_2.mp3", "static")
   objects.mwdoor.slide:setVolume(1.0)
-  objects.mwdoor.open = false
+  objects.mwdoor.toopen = false
   objects.mwdoor.gone = false
 
+  x, y = love.mouse.getPosition()
+  x = screen2world(x, tX)
+  y = screen2world(y, tY)
   objects.mwwatts = {}
   objects.mwwatts.name = "mwwatts"
   objects.mwwatts.body = love.physics.newBody(world, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 50, "static")
@@ -118,10 +121,7 @@ function love.load()
   objects.mwwatts.fixture = love.physics.newFixture(objects.mwwatts.body, objects.mwwatts.shape, 1)
   objects.mwwatts.fixture:setFriction(0.01)
   objects.mwwatts.fixture:setFilterData(bit.bor(CATEGORY_MICROWAVE, CATEGORY_MWCONTROLS), 0, 0)
-  objects.mwwatts.mwjoint = love.physics.newRevoluteJoint( objects.mwwatts.body, objects.mwbody.body, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 50, true )
-  x, y = love.mouse.getPosition()
-  x = screen2world(x, tX)
-  y = screen2world(y, tY)
+  objects.mwwatts.mwjoint = love.physics.newRevoluteJoint( objects.mwbody.body, objects.mwwatts.body, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 50, false )
   objects.mwwatts.mousejoint = love.physics.newMouseJoint(objects.mwwatts.body, x, y)
   objects.mwwatts.image = love.graphics.newImage("mwknob.png")
 
@@ -135,9 +135,9 @@ function love.load()
   objects.mwtime.fixture = love.physics.newFixture(objects.mwtime.body, objects.mwtime.shape, 1)
   objects.mwtime.fixture:setFriction(0.01)
   objects.mwtime.fixture:setFilterData(bit.bor(CATEGORY_MICROWAVE, CATEGORY_MWCONTROLS), 0, 0)
-  objects.mwtime.mwjoint = love.physics.newRevoluteJoint( objects.mwtime.body, objects.mwbody.body, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 150, true )
+  objects.mwtime.mwjoint = love.physics.newRevoluteJoint( objects.mwbody.body, objects.mwtime.body, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 150, false )
   objects.mwtime.mousejoint = love.physics.newMouseJoint(objects.mwtime.body, x, y)
-  objects.mwtime.image = love.graphics.newImage("mwknob.png")
+  objects.mwtime.image = objects.mwwatts.image--love.graphics.newImage("mwknob.png")
 
   -- Cat
   --objects.catbody = {}
@@ -189,6 +189,7 @@ function love.load()
   objects.waste.body:setMass(50)
   objects.waste.shape = love.physics.newRectangleShape(68, 122)
   objects.waste.fixture = love.physics.newFixture(objects.waste.body, objects.waste.shape, 5)
+  --objects.waste.fixture:setFilterData(CATEGORY_OBJS, bit.bor(CATEGORY_GROUND, CATEGORY_MICROWAVE), 0)
   objects.waste.fixture:setFilterData(CATEGORY_OBJS, bit.bor(CATEGORY_GROUND, CATEGORY_MICROWAVE), 0)
   objects.waste.image = love.graphics.newImage("nuc_waste.png")
 
@@ -299,6 +300,9 @@ function resetObjs()
   power = 0
   t = 0
   DING_ONCE = true
+
+  success = love.window.showMessageBox( "Thanks", "Just Microwave It!\
+By Konstantin Freybe and Oliver Zscheyge", "info", true )
 end
 
 local t = 0
@@ -311,15 +315,15 @@ function love.update(dt)
 
   -- MW door
   if (currentObj == objects.mwdoor) then
-    if objects.mwdoor.open then
+    if objects.mwdoor.toopen then
       love.audio.play(objects.mwdoor.slide)
       objects.mwdoor.body:applyLinearImpulse(-4000, 0)
-      objects.mwdoor.open = false
+      objects.mwdoor.toopen = false
       currentObj = nil
     else
       love.audio.play(objects.mwdoor.slide)
       objects.mwdoor.body:applyLinearImpulse(4000, 0)
-      objects.mwdoor.open = true
+      objects.mwdoor.toopen = true
       currentObj = nil
     end
   end
@@ -342,7 +346,7 @@ function love.update(dt)
   end
   if (currentObj == objects.mwtime) then
     local angle = math.floor(math.abs(math.deg(objects.mwtime.body:getAngle())) + 0.5)
-    if ((angle >= 0 and angle < 55) or angle >= 360) then
+    if ((angle >= 0 and angle < 55) or angle == 360) then
       objects.mwtime.body:setAngle(math.rad(60))
     elseif (angle >= 55 and angle < 115) then
       objects.mwtime.body:setAngle(math.rad(120))
@@ -353,7 +357,7 @@ function love.update(dt)
     elseif (angle >= 235 and angle < 295) then
       objects.mwtime.body:setAngle(math.rad(300))
     elseif ((angle >= 295 and angle < 360) or angle < 0) then
-      objects.mwtime.body:setAngle(math.rad(360))
+      objects.mwtime.body:setAngle(math.rad(0))
     end
     objects.mwtime.body:setLinearVelocity(0, 0)
     currentObj = nil
@@ -386,7 +390,7 @@ function love.update(dt)
 end
 
 function updateTime(dt_in_s)
-  if (objects.mwdoor.open) then
+  if (objects.mwdoor.toopen) then
     local angle = math.abs(math.deg(objects.mwtime.body:getAngle()))
     if (angle > 0) then
       objects.mwbody.on = true
@@ -476,7 +480,7 @@ function love.draw()
   end
   local x, y = love.mouse.getPosition()
   love.graphics.print( math.deg(objects.mwwatts.body:getAngle()), 10, 40 )
-  love.graphics.print( tostring("blub"), 10, 60)
+  love.graphics.print( math.deg(objects.mwtime.body:getAngle()), 10, 60)
   love.graphics.print( "Mouse: ("..x..", "..y..")", 10, 80)
   love.graphics.print( "DEBUG: "..tostring(DEBUG), 10, 100)
 
