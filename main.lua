@@ -71,6 +71,62 @@ function love.load()
   objects.kitchen.music = love.audio.newSource("Just_Microwave_It_Loop.mp3")
   objects.kitchen.music:setVolume(1.0)
 
+  -- Cat
+  objects.catbody = {}
+  objects.catbody.name = "cat"
+  objects.catbody.body = love.physics.newBody(world, 700, 100, "dynamic")
+  objects.catbody.body:setUserData(objects.catbody)
+  objects.catbody.shape = love.physics.newRectangleShape(120, 70)
+  objects.catbody.fixture = love.physics.newFixture(objects.catbody.body, objects.catbody.shape)
+  objects.catbody.fixture:setFilterData(CATEGORY_OBJS, CATEGORY_OBJS, GROUP_DONT_COLLIDE)
+  objects.catbody.mousejoint = love.physics.newMouseJoint(objects.catbody.body, love.mouse.getPosition())
+  objects.catbody.image = love.graphics.newImage("cat_body.png")
+  objects.cathead = {}
+  objects.cathead.name = "cat"
+  objects.cathead.body = love.physics.newBody(world, 650, 100, "dynamic")
+  objects.cathead.body:setUserData(objects.cathead) -- TODO MIGHT PRODUCE A BUG -- not catbody, but cathead
+  objects.cathead.shape = love.physics.newRectangleShape(100, 70)
+  objects.cathead.fixture = love.physics.newFixture(objects.cathead.body, objects.cathead.shape)
+  objects.cathead.catjoint = love.physics.newRevoluteJoint( objects.cathead.body, objects.catbody.body, 650, 100, false )
+  objects.cathead.mousejoint = love.physics.newMouseJoint( objects.cathead.body, love.mouse.getPosition())
+  objects.cathead.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cathead.body, 650, 100, 650, 100, 10, false )
+  objects.cathead.image = love.graphics.newImage("cat_head.png")
+  objects.cattail = {}
+  objects.cattail.name = "cat"
+  objects.cattail.body = love.physics.newBody(world, 545, 120, "dynamic")
+  objects.cattail.body:setUserData(objects.cattail)
+  objects.cattail.shape = love.physics.newRectangleShape(22, 54)
+  objects.cattail.fixture = love.physics.newFixture(objects.cattail.body, objects.cattail.shape)
+  objects.cattail.catjoint = love.physics.newRevoluteJoint( objects.cattail.body, objects.catbody.body, 545, 120, false )
+  objects.cattail.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cattail.body, 545, 120, 545, 120, 0, true )
+  objects.cattail.image = love.graphics.newImage("cat_tail.png")
+  objects.catback = {}
+  objects.catback.name = "cat"
+  objects.catback.body = love.physics.newBody(world, 570, 140, "dynamic")
+  objects.catback.body:setUserData(objects.catback)
+  objects.catback.shape = love.physics.newRectangleShape(22, 54)
+  objects.catback.fixture = love.physics.newFixture(objects.catback.body, objects.catback.shape)
+  objects.catback.catjoint = love.physics.newRevoluteJoint( objects.catback.body, objects.catbody.body, 570, 140, false )
+  objects.catback.image = love.graphics.newImage("cat_legs.png")
+  objects.catfront = {}
+  objects.catfront.name = "cat"
+  objects.catfront.body = love.physics.newBody(world, 630, 140, "dynamic")
+  objects.catfront.body:setUserData(objects.catfront)
+  objects.catfront.shape = love.physics.newRectangleShape(22, 54)
+  objects.catfront.fixture = love.physics.newFixture(objects.catfront.body, objects.catfront.shape)
+  objects.catfront.catjoint = love.physics.newRevoluteJoint( objects.catfront.body, objects.catbody.body, 630, 140, false )
+  objects.catfront.image = love.graphics.newImage("cat_legs.png")
+
+  objects.waste = {}
+  objects.waste.name = "waste"
+  objects.waste.body = love.physics.newBody(world, 700, gameHeight - 122 / 2 - KITCHEN_HEIGHT * 2, "dynamic")
+  objects.waste.body:setUserData(objects.waste)
+  objects.waste.body:setMass(50)
+  objects.waste.shape = love.physics.newRectangleShape(68, 122)
+  objects.waste.fixture = love.physics.newFixture(objects.waste.body, objects.waste.shape, 5)
+  objects.waste.fixture:setFilterData(CATEGORY_OBJS, bit.bor(CATEGORY_GROUND, CATEGORY_MICROWAVE), 0)
+  objects.waste.image = love.graphics.newImage("nuc_waste.png")
+
   objects.mwbody = {}
   objects.mwbody.name = "mwbody"
   objects.mwbody.body = love.physics.newBody(world, gameWidth / 2, gameHeight - KITCHEN_HEIGHT - MW_HEIGHT / 2, "static")
@@ -138,60 +194,6 @@ function love.load()
   objects.mwtime.mwjoint = love.physics.newRevoluteJoint( objects.mwbody.body, objects.mwtime.body, gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 150, false )
   objects.mwtime.mousejoint = love.physics.newMouseJoint(objects.mwtime.body, x, y)
   objects.mwtime.image = objects.mwwatts.image--love.graphics.newImage("mwknob.png")
-
-  -- Cat
-  --objects.catbody = {}
-  --objects.catbody.body = love.physics.newBody(world, 700, 100, "dynamic")
-  --objects.catbody.body:setUserData(objects.catbody)
-  --objects.catbody.shape = love.physics.newRectangleShape(120, 70)
-  --objects.catbody.fixture = love.physics.newFixture(objects.catbody.body, objects.catbody.shape)
-  --objects.catbody.fixture:setFilterData(CATEGORY_OBJS, CATEGORY_OBJS, GROUP_DONT_COLLIDE)
-  --objects.catbody.mousejoint = love.physics.newMouseJoint(objects.catbody.body, love.mouse.getPosition())
-  ----objects.catbody.fixture:setGroupIndex(NON_COLLIDE_GRP)
-  --objects.catbody.image = love.graphics.newImage("cat_body.png")
-  --objects.cathead = {}
-  --objects.cathead.body = love.physics.newBody(world, 650, 100, "dynamic")
-  --objects.cathead.body:setUserData(objects.cathead) -- TODO MIGHT PRODUCE A BUG -- not catbody, but cathead
-  --objects.cathead.shape = love.physics.newRectangleShape(100, 70)
-  --objects.cathead.fixture = love.physics.newFixture(objects.cathead.body, objects.cathead.shape)
-  ----objects.cathead.fixture:setGroupIndex(NON_COLLIDE_GRP)
-  --objects.cathead.catjoint = love.physics.newRevoluteJoint( objects.cathead.body, objects.catbody.body, 650, 100, false )
-  --objects.cathead.mousejoint = love.physics.newMouseJoint( objects.cathead.body, love.mouse.getPosition())
-  --objects.cathead.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cathead.body, 650, 100, 650, 100, 10, false )
-  --objects.cathead.image = love.graphics.newImage("cat_head.png")
-  --objects.cattail = {}
-  --objects.cattail.body = love.physics.newBody(world, 545, 120, "dynamic")
-  --objects.cattail.body:setUserData(objects.cattail)
-  --objects.cattail.shape = love.physics.newRectangleShape(22, 54)
-  --objects.cattail.fixture = love.physics.newFixture(objects.cattail.body, objects.cattail.shape)
-  --objects.cattail.catjoint = love.physics.newRevoluteJoint( objects.cattail.body, objects.catbody.body, 545, 120, false )
-  --objects.cattail.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cattail.body, 545, 120, 545, 120, 0, true )
-  --objects.cattail.image = love.graphics.newImage("cat_tail.png")
-  --objects.catback = {}
-  --objects.catback.body = love.physics.newBody(world, 570, 140, "dynamic")
-  --objects.catback.body:setUserData(objects.catback)
-  --objects.catback.shape = love.physics.newRectangleShape(22, 54)
-  --objects.catback.fixture = love.physics.newFixture(objects.catback.body, objects.catback.shape)
-  --objects.catback.catjoint = love.physics.newRevoluteJoint( objects.catback.body, objects.catbody.body, 570, 140, false )
-  --objects.catback.image = love.graphics.newImage("cat_legs.png")
-  --objects.catfront = {}
-  --objects.catfront.body = love.physics.newBody(world, 630, 140, "dynamic")
-  --objects.catfront.body:setUserData(objects.catfront)
-  --objects.catfront.shape = love.physics.newRectangleShape(22, 54)
-  --objects.catfront.fixture = love.physics.newFixture(objects.catfront.body, objects.catfront.shape)
-  --objects.catfront.catjoint = love.physics.newRevoluteJoint( objects.catfront.body, objects.catbody.body, 630, 140, false )
-  --objects.catfront.image = love.graphics.newImage("cat_legs.png")
-
-  objects.waste = {}
-  objects.waste.name = "waste"
-  objects.waste.body = love.physics.newBody(world, 700, gameHeight - 122 / 2 - KITCHEN_HEIGHT * 2, "dynamic")
-  objects.waste.body:setUserData(objects.waste)
-  objects.waste.body:setMass(50)
-  objects.waste.shape = love.physics.newRectangleShape(68, 122)
-  objects.waste.fixture = love.physics.newFixture(objects.waste.body, objects.waste.shape, 5)
-  --objects.waste.fixture:setFilterData(CATEGORY_OBJS, bit.bor(CATEGORY_GROUND, CATEGORY_MICROWAVE), 0)
-  objects.waste.fixture:setFilterData(CATEGORY_OBJS, bit.bor(CATEGORY_GROUND, CATEGORY_MICROWAVE), 0)
-  objects.waste.image = love.graphics.newImage("nuc_waste.png")
 
   objects.reset = {}
   objects.reset.name = "resetButton"
@@ -287,13 +289,13 @@ function resetObjs()
   objects.mwtime.body:setLinearVelocity(0, 0)
   objects.mwtime.body:setType("static")
 
-  --objects.catbody.body:setPosition(600, 100)
-  --objects.catbody.body:setLinearVelocity(0, 0)
-  --objects.catbody.body:setType("dynamic")
+  objects.catbody.body:setPosition(600, 100)
+  objects.catbody.body:setLinearVelocity(0, 0)
+  objects.catbody.body:setType("dynamic")
 
   objects.waste.body:setPosition(700, gameHeight - 122 / 2 - KITCHEN_HEIGHT)
   objects.waste.body:setAngle(0)
-  objects.waste.body:setLinearVelocity(0, 0)
+  objects.waste.body:setLinearVelocity(-1, -1)
   objects.waste.body:setType("dynamic")
 
   currentObj = nil
@@ -364,14 +366,14 @@ function love.update(dt)
   end
 
   -- Drag objects
-  --if (currentObj == objects.catbody
-  --    or currentObj == objects.cathead
-  --    or currentObj == objects.cattail
-  --    or currentObj == objects.catback
-  --    or currentObj == objects.catfront) then
-  --  currentObj.body:setPosition(x, y)
-  --  currentObj.body:setLinearVelocity(0, 0)
-  --end
+  if (currentObj == objects.catbody
+      or currentObj == objects.cathead
+      or currentObj == objects.cattail
+      or currentObj == objects.catback
+      or currentObj == objects.catfront) then
+    currentObj.body:setPosition(x, y)
+    currentObj.body:setLinearVelocity(0, 0)
+  end
   if (currentObj == objects.waste) then
     currentObj.body:setPosition(x, y)
     currentObj.body:setLinearVelocity(0, 0)
@@ -461,11 +463,11 @@ function love.draw()
   renderImg(objects.mwtime)
 
   -- Cat
-  --renderImg(objects.catbody)
-  --renderImg(objects.cattail)
-  --renderImg(objects.catfront)
-  --renderImg(objects.catback)
-  --renderImg(objects.cathead)
+  renderImg(objects.catbody)
+  renderImg(objects.cattail)
+  renderImg(objects.catfront)
+  renderImg(objects.catback)
+  renderImg(objects.cathead)
 
   -- Waste
   renderImg(objects.waste)
