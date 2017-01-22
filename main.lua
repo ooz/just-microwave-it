@@ -74,7 +74,7 @@ function love.load()
   -- Cat
   objects.catbody = {}
   objects.catbody.name = "cat"
-  objects.catbody.body = love.physics.newBody(world, 700, 100, "dynamic")
+  objects.catbody.body = love.physics.newBody(world, 600, 100, "dynamic")
   objects.catbody.body:setUserData(objects.catbody)
   objects.catbody.shape = love.physics.newRectangleShape(120, 70)
   objects.catbody.fixture = love.physics.newFixture(objects.catbody.body, objects.catbody.shape)
@@ -98,7 +98,7 @@ function love.load()
   objects.cattail.shape = love.physics.newRectangleShape(22, 54)
   objects.cattail.fixture = love.physics.newFixture(objects.cattail.body, objects.cattail.shape)
   objects.cattail.catjoint = love.physics.newRevoluteJoint( objects.cattail.body, objects.catbody.body, 545, 120, false )
-  objects.cattail.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cattail.body, 545, 120, 545, 120, 0, true )
+  objects.cattail.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cattail.body, 545, 120, 545, 120, 2, true )
   objects.cattail.image = love.graphics.newImage("cat_tail.png")
   objects.catback = {}
   objects.catback.name = "cat"
@@ -107,6 +107,7 @@ function love.load()
   objects.catback.shape = love.physics.newRectangleShape(22, 54)
   objects.catback.fixture = love.physics.newFixture(objects.catback.body, objects.catback.shape)
   objects.catback.catjoint = love.physics.newRevoluteJoint( objects.catback.body, objects.catbody.body, 570, 140, false )
+  objects.catback.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.catback.body, 545, 120, 545, 120, 2, true )
   objects.catback.image = love.graphics.newImage("cat_legs.png")
   objects.catfront = {}
   objects.catfront.name = "cat"
@@ -115,6 +116,7 @@ function love.load()
   objects.catfront.shape = love.physics.newRectangleShape(22, 54)
   objects.catfront.fixture = love.physics.newFixture(objects.catfront.body, objects.catfront.shape)
   objects.catfront.catjoint = love.physics.newRevoluteJoint( objects.catfront.body, objects.catbody.body, 630, 140, false )
+  objects.catfront.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.catfront.body, 545, 120, 545, 120, 2, true )
   objects.catfront.image = love.graphics.newImage("cat_legs.png")
 
   objects.waste = {}
@@ -316,7 +318,7 @@ function love.update(dt)
   y = screen2world(y, tY)
 
   -- MW door
-  if (currentObj == objects.mwdoor) then
+  if (currentObj == objects.mwdoor or currentObj == objects.mwbody) then
     if objects.mwdoor.toopen then
       love.audio.play(objects.mwdoor.slide)
       objects.mwdoor.body:applyLinearImpulse(-4000, 0)
@@ -552,13 +554,29 @@ function getObjCB(fixture)
   local x, y = love.mouse.getPosition()
   x = screen2world(x, tX)
   y = screen2world(y, tY)
-  if (fixture:testPoint(x, y)) then
+  if (objects.mwwatts.fixture:testPoint(x, y)) then
+    currentObj = objects.mwwatts
+    DEBUG = currentObj
+    return false
+  elseif (objects.mwtime.fixture:testPoint(x, y)) then
+    currentObj = objects.mwtime
+    DEBUG = currentObj
+    return false
+  elseif (testCat(x, y)) then
+    currentObj = objects.cathead
+    DEBUG = currentObj
+    return false
+  elseif (fixture:testPoint(x, y)) then
       currentObj = body:getUserData()
       DEBUG = currentObj
       return false
   end
   currentObj = nil
   return true
+end
+
+function testCat(x, y)
+  return objects.catbody.fixture:testPoint(x, y) or objects.cathead.fixture:testPoint(x, y) or objects.cattail.fixture:testPoint(x, y) or objects.catfront.fixture:testPoint(x, y) or objects.catback.fixture:testPoint(x, y)
 end
 
 function screen2world(screenCoord, offset)
