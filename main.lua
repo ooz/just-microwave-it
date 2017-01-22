@@ -18,6 +18,8 @@ CATEGORY_GROUND = bit.lshift(1, 1)
 CATEGORY_MICROWAVE = bit.lshift(1, 2)
 CATEGORY_MWCONTROLS = bit.lshift(1, 3)
 
+MASK_OBJECTS = bit.bor(CATEGORY_OBJS, CATEGORY_GROUND)
+
 GROUP_DONT_COLLIDE = bit.lshift(-1, 0)
 GROUP_ALWAYS_COLLIDE = bit.lshift(1, 0)
 
@@ -29,6 +31,11 @@ WATTS[360] = 200
 WATTS[90] = 400
 WATTS[180] = 600
 WATTS[270] = 700
+
+POWER_THRESHOLDS = {}
+POWER_THRESHOLDS["cat"] = 800
+POWER_THRESHOLDS["waste"] = 2000
+POWER_THRESHOLDS["mwmini"] = 4000
 
 DEBUG = 0
 
@@ -43,7 +50,6 @@ function love.load()
 
   love.physics.setMeter(METER_IN_PX)
   world = love.physics.newWorld(0, FALLBESCHLEUNIGUNG * METER_IN_PX, true)
-  world:setCallbacks(beginContact, endContact, preSolve, postSolve)
   power = 0
 
   effect = love.graphics.newShader [[
@@ -78,8 +84,8 @@ function love.load()
   objects.catbody.body:setUserData(objects.catbody)
   objects.catbody.shape = love.physics.newRectangleShape(120, 70)
   objects.catbody.fixture = love.physics.newFixture(objects.catbody.body, objects.catbody.shape)
-  objects.catbody.fixture:setFilterData(CATEGORY_OBJS, CATEGORY_OBJS, GROUP_DONT_COLLIDE)
-  objects.catbody.mousejoint = love.physics.newMouseJoint(objects.catbody.body, love.mouse.getPosition())
+  objects.catbody.fixture:setFilterData(CATEGORY_OBJS, MASK_OBJECTS, 0)
+  --objects.catbody.mousejoint = love.physics.newMouseJoint(objects.catbody.body, love.mouse.getPosition())
   objects.catbody.image = love.graphics.newImage("cat_body.png")
   objects.cathead = {}
   objects.cathead.name = "cat"
@@ -87,16 +93,19 @@ function love.load()
   objects.cathead.body:setUserData(objects.cathead) -- TODO MIGHT PRODUCE A BUG -- not catbody, but cathead
   objects.cathead.shape = love.physics.newRectangleShape(100, 70)
   objects.cathead.fixture = love.physics.newFixture(objects.cathead.body, objects.cathead.shape)
+  objects.cathead.fixture:setFilterData(CATEGORY_OBJS, MASK_OBJECTS, 0)
   objects.cathead.catjoint = love.physics.newRevoluteJoint( objects.cathead.body, objects.catbody.body, 650, 100, false )
-  objects.cathead.mousejoint = love.physics.newMouseJoint( objects.cathead.body, love.mouse.getPosition())
   objects.cathead.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cathead.body, 650, 100, 650, 100, 10, false )
   objects.cathead.image = love.graphics.newImage("cat_head.png")
+  objects.cathead.meow = love.audio.newSource("Just_Microwave_It_Loop.mp3")
+  objects.cathead.meow:setVolume(1.0)
   objects.cattail = {}
   objects.cattail.name = "cat"
   objects.cattail.body = love.physics.newBody(world, 545, 120, "dynamic")
   objects.cattail.body:setUserData(objects.cattail)
   objects.cattail.shape = love.physics.newRectangleShape(22, 54)
   objects.cattail.fixture = love.physics.newFixture(objects.cattail.body, objects.cattail.shape)
+  objects.cattail.fixture:setFilterData(CATEGORY_OBJS, MASK_OBJECTS, 0)
   objects.cattail.catjoint = love.physics.newRevoluteJoint( objects.cattail.body, objects.catbody.body, 545, 120, false )
   objects.cattail.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.cattail.body, 545, 120, 545, 120, 2, true )
   objects.cattail.image = love.graphics.newImage("cat_tail.png")
@@ -106,6 +115,7 @@ function love.load()
   objects.catback.body:setUserData(objects.catback)
   objects.catback.shape = love.physics.newRectangleShape(22, 54)
   objects.catback.fixture = love.physics.newFixture(objects.catback.body, objects.catback.shape)
+  objects.catback.fixture:setFilterData(CATEGORY_OBJS, MASK_OBJECTS, 0)
   objects.catback.catjoint = love.physics.newRevoluteJoint( objects.catback.body, objects.catbody.body, 570, 140, false )
   objects.catback.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.catback.body, 545, 120, 545, 120, 2, true )
   objects.catback.image = love.graphics.newImage("cat_legs.png")
@@ -115,19 +125,30 @@ function love.load()
   objects.catfront.body:setUserData(objects.catfront)
   objects.catfront.shape = love.physics.newRectangleShape(22, 54)
   objects.catfront.fixture = love.physics.newFixture(objects.catfront.body, objects.catfront.shape)
+  objects.catfront.fixture:setFilterData(CATEGORY_OBJS, MASK_OBJECTS, 0)
   objects.catfront.catjoint = love.physics.newRevoluteJoint( objects.catfront.body, objects.catbody.body, 630, 140, false )
   objects.catfront.catmaxjoint = love.physics.newRopeJoint( objects.catbody.body, objects.catfront.body, 545, 120, 545, 120, 2, true )
   objects.catfront.image = love.graphics.newImage("cat_legs.png")
 
   objects.waste = {}
   objects.waste.name = "waste"
-  objects.waste.body = love.physics.newBody(world, 700, gameHeight - 122 / 2 - KITCHEN_HEIGHT * 2, "dynamic")
+  objects.waste.body = love.physics.newBody(world, 700, gameHeight - 150 - 122 / 2 - KITCHEN_HEIGHT * 2, "dynamic")
   objects.waste.body:setUserData(objects.waste)
   objects.waste.body:setMass(50)
   objects.waste.shape = love.physics.newRectangleShape(68, 122)
   objects.waste.fixture = love.physics.newFixture(objects.waste.body, objects.waste.shape, 5)
-  objects.waste.fixture:setFilterData(CATEGORY_OBJS, bit.bor(CATEGORY_GROUND, CATEGORY_MICROWAVE), 0)
+  objects.waste.fixture:setFilterData(CATEGORY_OBJS, MASK_OBJECTS, 0)
   objects.waste.image = love.graphics.newImage("nuc_waste.png")
+
+  objects.mwmini = {}
+  objects.mwmini.name = "mwmini"
+  objects.mwmini.body = love.physics.newBody(world, 700, gameHeight - 150 / 2 - KITCHEN_HEIGHT * 2, "dynamic")
+  objects.mwmini.body:setUserData(objects.mwmini)
+  objects.mwmini.body:setMass(10)
+  objects.mwmini.shape = love.physics.newRectangleShape(200, 150)
+  objects.mwmini.fixture = love.physics.newFixture(objects.mwmini.body, objects.mwmini.shape, 5)
+  objects.mwmini.fixture:setFilterData(CATEGORY_OBJS, MASK_OBJECTS, 0)
+  objects.mwmini.image = love.graphics.newImage("mwmini.png")
 
   objects.mwbody = {}
   objects.mwbody.name = "mwbody"
@@ -137,9 +158,7 @@ function love.load()
   objects.mwbody.shape = love.physics.newRectangleShape(MW_WIDTH, MW_HEIGHT)
   objects.mwbody.fixture = love.physics.newFixture(objects.mwbody.body, objects.mwbody.shape)
   objects.mwbody.fixture:setFriction(1.0)
-  objects.mwbody.fixture:setFilterData(CATEGORY_MICROWAVE, CATEGORY_OBJS, 0)
-  --objects.mwbody.fixture:setCategory(MW_CATEGORY)
-  --objects.mwbody.fixture:setGroupIndex(NON_COLLIDE_GRP)
+  objects.mwbody.fixture:setFilterData(CATEGORY_MICROWAVE, CATEGORY_GROUND, 0)
   objects.mwbody.image = love.graphics.newImage("mwbody.png")
   objects.mwbody.ding = love.audio.newSource("ggj_mwi_MWping.mp3", "static")
   objects.mwbody.ding:setVolume(1.0)
@@ -212,47 +231,6 @@ function love.load()
   love.resize(love.graphics.getDimensions())
 end
 
-function beginContact(f1, f2, con)
-  local f1body = f1:getBody()
-  local f2body = f2:getBody()
-  local f1obj = {name = "f1"}
-  local f2obj = {name = "f2"}
-  if f1body then f1obj = f1body:getUserData() or {name = "f1"} end
-  if f2body then f2obj = f2body:getUserData() or {name = "f2"} end
-  print(f1obj.name .. " beginVS ".. f2obj.name)
-  --con:resetFriction()
-end
-function endContact(f1, f2, con)
-  local f1body = f1:getBody()
-  local f2body = f2:getBody()
-  local f1obj = {name = "nil"}
-  local f2obj = {name = "nil"}
-  if f1body then f1obj = f1body:getUserData() or {name = "nil"} end
-  if f2body then f2obj = f2body:getUserData() or {name = "nil"} end
-  print(f1obj.name .. " endVS ".. f2obj.name)
-  --con:resetFriction()
-end
-function preSolve(f1, f2, con)
-  local f1body = f1:getBody()
-  local f2body = f2:getBody()
-  local f1obj = {name = "nil"}
-  local f2obj = {name = "nil"}
-  if f1body then f1obj = f1body:getUserData() or {name = "nil"} end
-  if f2body then f2obj = f2body:getUserData() or {name = "nil"} end
-  --print(f1obj.name .. " preVS ".. f2obj.name)
-  --con:resetFriction()
-end
-function postSolve(f1, f2, con, normalImpulse, tangentImpulse)
-  local f1body = f1:getBody()
-  local f2body = f2:getBody()
-  local f1obj = {name = "nil"}
-  local f2obj = {name = "nil"}
-  if f1body then f1obj = f1body:getUserData() or {name = "nil"} end
-  if f2body then f2obj = f2body:getUserData() or {name = "nil"} end
-  --print(f1obj.name .. " postVS ".. f2obj.name)
-  --con:resetFriction()
-end
-
 function setupShaders()
   -- from
   -- https://love2d.org/forums/viewtopic.php?t=3733&start=270
@@ -295,10 +273,15 @@ function resetObjs()
   objects.catbody.body:setLinearVelocity(0, 0)
   objects.catbody.body:setType("dynamic")
 
-  objects.waste.body:setPosition(700, gameHeight - 122 / 2 - KITCHEN_HEIGHT)
+  objects.waste.body:setPosition(700, gameHeight - 150 - 122 / 2 - KITCHEN_HEIGHT)
   objects.waste.body:setAngle(0)
   objects.waste.body:setLinearVelocity(-1, -1)
   objects.waste.body:setType("dynamic")
+
+  objects.mwmini.body:setPosition(700, gameHeight - 150 / 2 - KITCHEN_HEIGHT)
+  objects.mwmini.body:setAngle(0)
+  objects.mwmini.body:setLinearVelocity(-1, -1)
+  objects.mwmini.body:setType("dynamic")
 
   currentObj = nil
   power = 0
@@ -372,13 +355,11 @@ function love.update(dt)
       or currentObj == objects.cathead
       or currentObj == objects.cattail
       or currentObj == objects.catback
-      or currentObj == objects.catfront) then
+      or currentObj == objects.catfront
+      or currentObj == objects.waste
+      or currentObj == objects.mwmini) then
     currentObj.body:setPosition(x, y)
-    currentObj.body:setLinearVelocity(0, 0)
-  end
-  if (currentObj == objects.waste) then
-    currentObj.body:setPosition(x, y)
-    currentObj.body:setLinearVelocity(0, 0)
+    if currentObj.name ~= "cat" then currentObj.body:setLinearVelocity(0, 0) end
   end
 
   -- Reset
@@ -470,6 +451,9 @@ function love.draw()
   renderImg(objects.catfront)
   renderImg(objects.catback)
   renderImg(objects.cathead)
+
+  -- Minimicrowave
+  renderImg(objects.mwmini)
 
   -- Waste
   renderImg(objects.waste)
