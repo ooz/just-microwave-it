@@ -9,7 +9,7 @@ MW_DOOR_MASS_IN_KG = 2
 MW_KNOB_MASS_IN_KG = 1
 KITCHEN_HEIGHT = 50
 
-DEGREE_PER_S = 30
+DEGREE_PER_S = 25
 
 currentObj = nil
 objectsInMW = {}
@@ -29,6 +29,7 @@ GROUP_ALWAYS_COLLIDE = bit.lshift(1, 0)
 BOOM_ONCE = true
 MEOW_ONCE = true
 WOBB_ONCE = true
+VOID_ONCE = true
 
 WATTS = {}
 WATTS[0] = 200
@@ -89,6 +90,8 @@ function love.load()
   objects.kitchen.boom = love.audio.newSource("ggj_mwi_boom.mp3")
   objects.kitchen.boom:setVolume(1.0)
   objects.kitchen.blacked = false
+  objects.kitchen.voidsound = love.audio.newSource("ggj2017_jmi_blackhole_drone_Mk2.mp3")
+  objects.kitchen.voidsound:setVolume(1.0)
 
   -- Cat
   objects.catbody = {}
@@ -301,6 +304,7 @@ function resetObjs()
   objects.kitchen.blacked = false
   tBlackhole = 0
   updateBlackHole(0)
+  objects.kitchen.music:play()
 
   objects.mwbody.body:setPosition(gameWidth / 2, gameHeight - MW_HEIGHT / 2 - KITCHEN_HEIGHT)
   objects.mwbody.body:setLinearVelocity(0, 0)
@@ -351,9 +355,10 @@ function resetObjs()
   BOOM_ONCE = true
   MEOW_ONCE = true
   WOBB_ONCE = true
+  VOID_ONCE = true
 
   success = love.window.showMessageBox( "Thanks for Playing!", "Just Microwave It!\
-v1.0\
+v1.1\
 By Konstantin Freybe and Oliver Zscheyge", "info", true )
 end
 
@@ -575,6 +580,11 @@ end
 
 function intoTheVoid(doit)
   objects.kitchen.blacked = doit
+  if VOID_ONCE then
+    objects.kitchen.music:stop()
+    objects.kitchen.voidsound:play()
+    VOID_ONCE = false
+  end
 end
 
 function blowUp()
@@ -656,15 +666,15 @@ function love.draw()
   end
 
   -- Debug output
-  local DEBUG_MIN_HEIGHT = 40
-  love.graphics.print( "Power: "..tostring(power), 10, DEBUG_MIN_HEIGHT )
-  if currentObj ~= nil then
-    love.graphics.print( "Obj present", 10, DEBUG_MIN_HEIGHT + 20 )
-  end
-  local x, y = love.mouse.getPosition()
-  love.graphics.print( math.deg(objects.mwwatts.body:getAngle()), 10, DEBUG_MIN_HEIGHT + 40 )
-  love.graphics.print( math.deg(objects.mwtime.body:getAngle()), 10, DEBUG_MIN_HEIGHT + 60)
-  love.graphics.print( "Mouse: ("..x..", "..y..")", 10, DEBUG_MIN_HEIGHT + 80)
+  --local DEBUG_MIN_HEIGHT = 40
+  --love.graphics.print( "Power: "..tostring(power), 10, DEBUG_MIN_HEIGHT )
+  --if currentObj ~= nil then
+  --  love.graphics.print( "Obj present", 10, DEBUG_MIN_HEIGHT + 20 )
+  --end
+  --local x, y = love.mouse.getPosition()
+  --love.graphics.print( math.deg(objects.mwwatts.body:getAngle()), 10, DEBUG_MIN_HEIGHT + 40 )
+  --love.graphics.print( math.deg(objects.mwtime.body:getAngle()), 10, DEBUG_MIN_HEIGHT + 60)
+  --love.graphics.print( "Mouse: ("..x..", "..y..")", 10, DEBUG_MIN_HEIGHT + 80)
 
   -- Ground
   --love.graphics.setColor(139, 69, 19, 255)

@@ -4,4 +4,7 @@ all:
 test:
 	love ./ --console
 
-.PHONY: all test
+clean:
+	rm -rf just-microwave-it.love
+
+.PHONY: all test clean
