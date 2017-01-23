@@ -45,6 +45,8 @@ EFFECT_VOLUME = 0.75
 
 DEBUG = 0
 
+local canvas
+
 function love.load()
   gameWidth = 800
   gameHeight = 600
@@ -238,6 +240,8 @@ function love.load()
   objects.reset.fixture = love.physics.newFixture(objects.reset.body, objects.reset.shape)
   objects.reset.image = love.graphics.newImage("rewind.png")
 
+  canvas = love.graphics.newCanvas(800, 600)
+
   setupShaders()
   --objects.kitchen.music:setPitch( 6 )
   objects.kitchen.music:setLooping( true )
@@ -398,10 +402,9 @@ function love.update(dt)
   updateTime(dt)
   t = t + dt
   if objects.mwbody.on and objects.mwdoor.gone then
-
     effect:send("time", t)
   end
-
+  --updateBlackHole(t)
 end
 
 function updateBlackHole(tAbs)
@@ -471,10 +474,7 @@ function love.draw()
 
   love.graphics.push("all")
 
-  --love.graphics.setShader(objects.shaders.hole.shader)
-
-  love.graphics.translate(tX, tY)
-  love.graphics.scale(scaleFactor, scaleFactor)
+  love.graphics.setCanvas(canvas)
 
   local b = objects.kitchen
   local bgScale = math.max(gameWidth / b.background:getWidth(), gameHeight / b.background:getHeight())
@@ -504,6 +504,8 @@ function love.draw()
   -- Door
   renderImg(objects.mwdoor)
 
+
+
   -- Debug output
   --love.graphics.print( "Power: "..tostring(power), 10, 0 )
   --if currentObj ~= nil then
@@ -520,7 +522,15 @@ function love.draw()
   --love.graphics.polygon("fill", objects.kitchen.body:getWorldPoints(objects.kitchen.shape:getPoints()))
 
   -- Reset "button"
+  love.graphics.setCanvas()
+
+  love.graphics.translate(tX, tY)
+  love.graphics.scale(scaleFactor, scaleFactor)
+  love.graphics.setBlendMode("alpha", "premultiplied")
+  --love.graphics.setShader(objects.shaders.hole.shader)
+  love.graphics.draw(canvas)
   love.graphics.setShader()
+
   renderImg(objects.reset)
 
   -- Letterboxes
