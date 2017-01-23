@@ -17,7 +17,7 @@ This game is about microwaving stuff. Please do not nuke the Universe. Thanks!
 
 Prerequisites:
 
-* Install [love2d engine](https://love2d.org/)
+* Install [love2d engine](https://love2d.org/) ([download links](https://love2d.org/#download))
 
 Building + Running
 
