@@ -18,13 +18,14 @@ CATEGORY_OBJS = bit.lshift(1, 0)
 CATEGORY_GROUND = bit.lshift(1, 1)
 CATEGORY_MICROWAVE = bit.lshift(1, 2)
 CATEGORY_MWCONTROLS = bit.lshift(1, 3)
+CATEGORY_MWDUMMIES = bit.lshift(1, 4)
 
-MASK_OBJECTS = bit.bor(CATEGORY_OBJS, CATEGORY_GROUND)
+MASK_OBJECTS = bit.bor(CATEGORY_OBJS, CATEGORY_GROUND, CATEGORY_MWDUMMIES)
+MASK_DUMMIES = CATEGORY_OBJS
 
 GROUP_DONT_COLLIDE = bit.lshift(-1, 0)
 GROUP_ALWAYS_COLLIDE = bit.lshift(1, 0)
 
-DING_ONCE = true
 BOOM_ONCE = true
 MEOW_ONCE = true
 WOBB_ONCE = true
@@ -44,6 +45,9 @@ POWER_THRESHOLDS["mwmini"] = 4000
 EFFECT_VOLUME = 0.75
 
 DEBUG = 0
+
+DUMMY_WIDTH = 300
+DUMMY_HEIGHT = 10
 
 local canvas
 
@@ -176,9 +180,25 @@ function love.load()
   objects.mwbody.ding:setVolume(EFFECT_VOLUME)
   objects.mwbody.on = false
 
-  objects.mwdummy = {}
-  objects.mwdummy.name = "mwdummy"
-  objects.mwdummy.body = love.physics.newBody(world, gameWidth / 2 - 100, gameHeight - KITCHEN_HEIGHT - MW_HEIGHT / 2, "static")
+  objects.mwdummytop = {}
+  objects.mwdummytop.name = "mwdummytop"
+  objects.mwdummytop.body = love.physics.newBody(world, 200 + DUMMY_WIDTH / 2, 300 + DUMMY_HEIGHT / 2, "static")
+  objects.mwdummytop.shape = love.physics.newRectangleShape(DUMMY_WIDTH, DUMMY_HEIGHT)
+  objects.mwdummytop.fixture = love.physics.newFixture(objects.mwdummytop.body, objects.mwdummytop.shape, 10)
+  objects.mwdummytop.fixture:setFilterData(CATEGORY_MWDUMMIES, MASK_DUMMIES, 0)
+  objects.mwdummyleft = {}
+  objects.mwdummyleft.name = "mwdummytop"
+  objects.mwdummyleft.body = love.physics.newBody(world, 200 + DUMMY_HEIGHT / 2, 300 + DUMMY_WIDTH / 2, "static")
+  objects.mwdummyleft.shape = love.physics.newRectangleShape(DUMMY_HEIGHT, DUMMY_WIDTH)
+  objects.mwdummyleft.fixture = love.physics.newFixture(objects.mwdummyleft.body, objects.mwdummyleft.shape, 10)
+  objects.mwdummyleft.fixture:setFilterData(CATEGORY_MWDUMMIES, MASK_DUMMIES, 0)
+  objects.mwdummyright = {}
+  objects.mwdummyright.name = "mwdummytop"
+  objects.mwdummyright.body = love.physics.newBody(world, 200 + 300 - DUMMY_HEIGHT / 2, 300 + DUMMY_WIDTH / 2, y, "static")
+  objects.mwdummyright.shape = love.physics.newRectangleShape(DUMMY_HEIGHT, DUMMY_WIDTH)
+  objects.mwdummyright.fixture = love.physics.newFixture(objects.mwdummyright.body, objects.mwdummyright.shape, 10)
+  objects.mwdummyright.fixture:setFilterData(CATEGORY_MWDUMMIES, MASK_DUMMIES, 0)
+  setDummiesActive(false)
 
   objects.mwdoor = {}
   objects.mwdoor.name = "mwdoor"
@@ -199,6 +219,7 @@ function love.load()
   objects.mwdoor.slide = love.audio.newSource("ggj_mwi_tuerauf_2.mp3", "static")
   objects.mwdoor.slide:setVolume(EFFECT_VOLUME)
   objects.mwdoor.toopen = false
+  objects.mwdoor.isOpen = true
   objects.mwdoor.gone = false
 
   x, y = love.mouse.getPosition()
@@ -278,6 +299,7 @@ function resetObjs()
   objects.mwbody.body:setAngle( 0 )
   objects.mwbody.body:setType("static")
   objects.mwbody.on = false
+  objects.mwdoor.isOpen = true
   objects.mwdoor.gone = true
   objects.mwwatts.body:setPosition(gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 50)
   objects.mwwatts.body:setAngle(0)
@@ -302,21 +324,63 @@ function resetObjs()
   objects.mwmini.body:setLinearVelocity(-1, -1)
   objects.mwmini.body:setType("dynamic")
 
+  setDummiesActive(false)
+
   currentObj = nil
   power = 0
   t = 0
-  DING_ONCE = true
   BOOM_ONCE = true
   MEOW_ONCE = true
   WOBB_ONCE = true
 
-  success = love.window.showMessageBox( "Thanks", "Just Microwave It!\
+  success = love.window.showMessageBox( "Thanks for Playing!", "Just Microwave It!\
 By Konstantin Freybe and Oliver Zscheyge", "info", true )
 end
 
+function setDummiesActive(active)
+  objects.mwdummytop.body:setActive(active)
+  objects.mwdummyleft.body:setActive(active)
+  objects.mwdummyright.body:setActive(active)
+end
+
+
+-- Taken from
+-- http://lua-users.org/wiki/IntegerDomain
+function intlimit()
+  local floor = math.floor
+
+  -- get highest power of 2 which Lua can still handle as integer
+  local step = 2
+  while true do
+    local nextstep = step*2
+    if nextstep-(nextstep-1) == 1 and nextstep > 0 then
+      step = nextstep
+    else
+      break
+    end
+  end
+
+  -- now get the highest number which Lua can still handle as integer
+  local limit,step = step,floor(step/2)
+  while step > 0 do
+    local nextlimit = limit+step
+    if nextlimit-(nextlimit-1) == 1 and nextlimit > 0 then
+      limit = nextlimit
+    end
+    step = floor(step/2)
+  end
+  return limit
+end
+
 local t = 0
+local MAX_INT = intlimit()
+local tMWDoorOpDone = MAX_INT
+local tForMWToChange = 0.7
 function love.update(dt)
   world:update(dt)
+  t = t + dt
+
+  updateMWTimer(dt)
 
   local x, y = love.mouse.getPosition()
   x = screen2world(x, tX)
@@ -324,17 +388,28 @@ function love.update(dt)
 
   -- MW door
   if (currentObj == objects.mwdoor or currentObj == objects.mwbody) then
+    tLastMWDoorOp = sumdt
+    tMWDoorOpDone = t + tForMWToChange
+    love.audio.play(objects.mwdoor.slide)
     if objects.mwdoor.toopen then
-      love.audio.play(objects.mwdoor.slide)
       objects.mwdoor.body:applyLinearImpulse(-4000, 0)
-      objects.mwdoor.toopen = false
-      currentObj = nil
+      --objects.mwdoor.toopen = false
+      setDummiesActive(false)
     else
-      love.audio.play(objects.mwdoor.slide)
       objects.mwdoor.body:applyLinearImpulse(4000, 0)
-      objects.mwdoor.toopen = true
-      currentObj = nil
+      --objects.mwdoor.toopen = true
+      setDummiesActive(true)
     end
+    currentObj = nil
+  end
+  if objects.mwdoor.isOpen and t >= tMWDoorOpDone then
+    objects.mwdoor.isOpen = false
+    objects.mwdoor.toopen = true
+    tMWDoorOpDone = MAX_INT
+  elseif not objects.mwdoor.isOpen and t >= tMWDoorOpDone then
+    objects.mwdoor.isOpen = true
+    objects.mwdoor.toopen = false
+    tMWDoorOpDone = MAX_INT
   end
   -- MW controls
   objects.mwwatts.mousejoint:setTarget(x, y)
@@ -399,8 +474,7 @@ function love.update(dt)
   if (currentObj == objects.reset) then
     resetObjs()
   end
-  updateTime(dt)
-  t = t + dt
+
   if objects.mwbody.on and objects.mwdoor.gone then
     effect:send("time", t)
   end
@@ -414,7 +488,7 @@ function updateBlackHole(tAbs)
   objects.shaders.hole.shader:send("pos", {screenWidth / 2, screenHeight / 2})
 end
 
-function updateTime(dt_in_s)
+function updateMWTimer(dt_in_s)
   if (objects.mwdoor.toopen) then
     local angle = math.abs(math.deg(objects.mwtime.body:getAngle()))
     if (angle > 0) then
@@ -423,10 +497,7 @@ function updateTime(dt_in_s)
       updatePower(dt_in_s)
       angle = math.deg(objects.mwtime.body:getAngle())
       if (angle <= 0) then
-        if (DING_ONCE) then
-          objects.mwbody.ding:play()
-          DING_ONCE = false
-        end
+        objects.mwbody.ding:play()
         blowUp()
       end
     end
@@ -451,6 +522,7 @@ function blowUp()
   if (not objects.mwdoor.mwjoint:isDestroyed()) then
     objects.mwdoor.mwjoint:destroy()
   end
+  setDummiesActive(false)
   objects.mwdoor.body:applyLinearImpulse(-400, -1000)
   --objects.mwbody.body:applyLinearImpulse(0, -4000)
   if (BOOM_ONCE) then
@@ -488,6 +560,11 @@ function love.draw()
   renderImg(objects.mwwatts)
   renderImg(objects.mwtime)
 
+  -- Door (render before objects (behind) when open)
+  if objects.mwdoor.isOpen then
+    renderImg(objects.mwdoor)
+  end
+
   -- Cat
   renderImg(objects.catbody)
   renderImg(objects.cattail)
@@ -501,8 +578,10 @@ function love.draw()
   -- Waste
   renderImg(objects.waste)
 
-  -- Door
-  renderImg(objects.mwdoor)
+  -- Door (render last when closed)
+  if not objects.mwdoor.isOpen or (not objects.mwdoor.toopen and objects.mwdoor.isOpen) then
+    renderImg(objects.mwdoor)
+  end
 
 
 
@@ -584,6 +663,10 @@ function getObjCB(fixture)
     return false
   elseif (objects.mwtime.fixture:testPoint(x, y)) then
     currentObj = objects.mwtime
+    DEBUG = currentObj
+    return false
+  elseif (objects.mwdoor.fixture:testPoint(x, y) and not objects.mwdoor.isOpen) then
+    currentObj = objects.mwdoor
     DEBUG = currentObj
     return false
   elseif (testCat(x, y)) then
