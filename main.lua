@@ -657,6 +657,7 @@ function getObjCB(fixture)
   local x, y = love.mouse.getPosition()
   x = screen2world(x, tX)
   y = screen2world(y, tY)
+  local obj = testObjs(x, y)
   if (objects.mwwatts.fixture:testPoint(x, y)) then
     currentObj = objects.mwwatts
     DEBUG = currentObj
@@ -669,8 +670,8 @@ function getObjCB(fixture)
     currentObj = objects.mwdoor
     DEBUG = currentObj
     return false
-  elseif (testCat(x, y)) then
-    currentObj = objects.cathead
+  elseif (obj) then
+    currentObj = obj
     DEBUG = currentObj
     return false
   elseif (fixture:testPoint(x, y)) then
@@ -680,6 +681,17 @@ function getObjCB(fixture)
   end
   currentObj = nil
   return true
+end
+
+function testObjs(x, y)
+  if (testCat(x, y)) then
+    return objects.cathead
+  elseif (objects.waste.fixture:testPoint(x, y)) then
+    return objects.waste
+  elseif (objects.mwmini.fixture:testPoint(x, y)) then
+    return objects.mwmini
+  end
+  return nil
 end
 
 function testCat(x, y)
