@@ -421,6 +421,7 @@ function love.update(dt)
     objects.mwdoor.isOpen = true
     objects.mwdoor.toopen = false
     tMWDoorOpDone = MAX_INT
+    power = 0
   end
   -- MW controls
   objects.mwwatts.mousejoint:setTarget(x, y)
@@ -481,11 +482,30 @@ function love.update(dt)
     end
   end
 
+  -- Check whether something is in the MW
+  local objsInMW = objectsInMW()
+  if #objsInMW then
+    for _, obj in pairs(objsInMW) do
+      if obj.name == "cat" and power >= POWER_THRESHOLDS["cat"] then
+        if not objects.cathead.boomed then
+          mindTheCat(true)
+        end
+      end
+      if obj.name == "waste" and power >= POWER_THRESHOLDS["waste"] then
+        blowUp()
+      end
+      if obj.name == "mwmini" and power >= POWER_THRESHOLDS["mwmini"] then
+        intoTheVoid(true)
+      end
+    end
+  end
+
   -- Reset
   if (currentObj == objects.reset) then
     resetObjs()
   end
 
+  -- Shader updates
   if objects.mwbody.on and objects.mwdoor.gone then
     effect:send("time", t)
   end
@@ -518,10 +538,7 @@ function updateMWTimer(dt_in_s)
       updatePower(dt_in_s)
       if (newAngle <= 0) then
         objects.mwbody.ding:play()
-        print("ding " .. dt_in_s)
-        --blowUp()
-        --mindTheCat(true)
-        intoTheVoid(true)
+        power = 0
       end
     end
   end
@@ -742,6 +759,25 @@ end
 
 function testCat(x, y)
   return objects.catbody.fixture:testPoint(x, y) or objects.cathead.fixture:testPoint(x, y) or objects.cattail.fixture:testPoint(x, y) or objects.catfront.fixture:testPoint(x, y) or objects.catback.fixture:testPoint(x, y)
+end
+
+function objectsInMW()
+  local objsInMW = {}
+  if isInMW(objects.catbody) and isInMW(objects.cathead) then
+    table.insert(objsInMW, objects.catbody)
+  end
+  if isInMW(objects.waste) then
+    table.insert(objsInMW, objects.waste)
+  end
+  if isInMW(objects.mwmini) then
+    table.insert(objsInMW, objects.mwmini)
+  end
+  return objsInMW
+end
+
+function isInMW(obj)
+  local x, y = obj.body:getPosition()
+  return x > 205 and x < 495 and y > 255 and y <= 550
 end
 
 function screen2world(screenCoord, offset)
