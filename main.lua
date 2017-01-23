@@ -81,7 +81,7 @@ function love.load()
   objects.kitchen.body:setMass(70)
   objects.kitchen.body:setUserData(objects.kitchen)
   objects.kitchen.shape = love.physics.newRectangleShape(4 * gameWidth, KITCHEN_HEIGHT)
-  objects.kitchen.fixture = love.physics.newFixture(objects.kitchen.body, objects.kitchen.shape, 5)
+  objects.kitchen.fixture = love.physics.newFixture(objects.kitchen.body, objects.kitchen.shape, 1000)
   objects.kitchen.fixture:setFilterData(CATEGORY_GROUND, CATEGORY_OBJS, GROUP_ALWAYS_COLLIDE)
   --objects.kitchen.fixture:setFriction(1.0)
   objects.kitchen.background = love.graphics.newImage("kueche.png")
@@ -182,21 +182,21 @@ function love.load()
 
   objects.mwdummytop = {}
   objects.mwdummytop.name = "mwdummytop"
-  objects.mwdummytop.body = love.physics.newBody(world, 200 + DUMMY_WIDTH / 2, 300 + DUMMY_HEIGHT / 2, "static")
+  objects.mwdummytop.body = love.physics.newBody(world, 200 + DUMMY_WIDTH / 2, 250 + DUMMY_HEIGHT / 2, "static")
   objects.mwdummytop.shape = love.physics.newRectangleShape(DUMMY_WIDTH, DUMMY_HEIGHT)
-  objects.mwdummytop.fixture = love.physics.newFixture(objects.mwdummytop.body, objects.mwdummytop.shape, 10)
+  objects.mwdummytop.fixture = love.physics.newFixture(objects.mwdummytop.body, objects.mwdummytop.shape, 1000)
   objects.mwdummytop.fixture:setFilterData(CATEGORY_MWDUMMIES, MASK_DUMMIES, 0)
   objects.mwdummyleft = {}
   objects.mwdummyleft.name = "mwdummytop"
-  objects.mwdummyleft.body = love.physics.newBody(world, 200 + DUMMY_HEIGHT / 2, 300 + DUMMY_WIDTH / 2, "static")
+  objects.mwdummyleft.body = love.physics.newBody(world, 200 + DUMMY_HEIGHT / 2, 250 + DUMMY_WIDTH / 2, "static")
   objects.mwdummyleft.shape = love.physics.newRectangleShape(DUMMY_HEIGHT, DUMMY_WIDTH)
-  objects.mwdummyleft.fixture = love.physics.newFixture(objects.mwdummyleft.body, objects.mwdummyleft.shape, 10)
+  objects.mwdummyleft.fixture = love.physics.newFixture(objects.mwdummyleft.body, objects.mwdummyleft.shape, 1000)
   objects.mwdummyleft.fixture:setFilterData(CATEGORY_MWDUMMIES, MASK_DUMMIES, 0)
   objects.mwdummyright = {}
   objects.mwdummyright.name = "mwdummytop"
-  objects.mwdummyright.body = love.physics.newBody(world, 200 + 300 - DUMMY_HEIGHT / 2, 300 + DUMMY_WIDTH / 2, y, "static")
+  objects.mwdummyright.body = love.physics.newBody(world, 200 + 300 - DUMMY_HEIGHT / 2, 250 + DUMMY_WIDTH / 2, y, "static")
   objects.mwdummyright.shape = love.physics.newRectangleShape(DUMMY_HEIGHT, DUMMY_WIDTH)
-  objects.mwdummyright.fixture = love.physics.newFixture(objects.mwdummyright.body, objects.mwdummyright.shape, 10)
+  objects.mwdummyright.fixture = love.physics.newFixture(objects.mwdummyright.body, objects.mwdummyright.shape, 1000)
   objects.mwdummyright.fixture:setFilterData(CATEGORY_MWDUMMIES, MASK_DUMMIES, 0)
   setDummiesActive(false)
 
