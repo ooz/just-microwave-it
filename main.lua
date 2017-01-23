@@ -44,8 +44,6 @@ POWER_THRESHOLDS["mwmini"] = 4000
 
 EFFECT_VOLUME = 0.75
 
-DEBUG = 0
-
 DUMMY_WIDTH = 300
 DUMMY_HEIGHT = 10
 
@@ -485,7 +483,7 @@ function love.update(dt)
   -- Check whether something is in the MW
   local objsInMW = objectsInMW()
   if #objsInMW then
-    for _, obj in pairs(objsInMW) do
+    for _, obj in ipairs(objsInMW) do
       if obj.name == "cat" and power >= POWER_THRESHOLDS["cat"] then
         if not objects.cathead.boomed then
           mindTheCat(true)
@@ -571,7 +569,8 @@ function intoTheVoid(doit)
 end
 
 function blowUp()
-  --objects.mwbody.body:setType("dynamic")
+  setDummiesActive(false)
+  objects.mwbody.body:setType("dynamic")
   objects.mwwatts.body:setType("dynamic")
   objects.mwtime.body:setType("dynamic")
   objects.mwbody.on = false
@@ -579,9 +578,14 @@ function blowUp()
   if (not objects.mwdoor.mwjoint:isDestroyed()) then
     objects.mwdoor.mwjoint:destroy()
   end
-  setDummiesActive(false)
   objects.mwdoor.body:applyLinearImpulse(-4000, -30000)
-  --objects.mwbody.body:applyLinearImpulse(0, -4000)
+  objects.mwbody.body:applyLinearImpulse(0, -30000)
+  local mwobjs = objectsInMW()
+  for _, v in ipairs(mwobjs) do
+    local direction = math.random(0, 1)
+    if not direction then direction = -1 end
+    v.body:applyLinearImpulse(direction * 4000, -30000)
+  end
   if (BOOM_ONCE) then
     objects.kitchen.boom:play()
     BOOM_ONCE = false
@@ -599,8 +603,6 @@ function love.mousereleased( x, y, button, istouch )
 end
 
 function love.draw()
-  --love.graphics.setWireframe( true )
-
   love.graphics.push("all")
 
   love.graphics.setCanvas(canvas)
@@ -654,7 +656,6 @@ function love.draw()
   love.graphics.print( math.deg(objects.mwwatts.body:getAngle()), 10, DEBUG_MIN_HEIGHT + 40 )
   love.graphics.print( math.deg(objects.mwtime.body:getAngle()), 10, DEBUG_MIN_HEIGHT + 60)
   love.graphics.print( "Mouse: ("..x..", "..y..")", 10, DEBUG_MIN_HEIGHT + 80)
-  love.graphics.print( "DEBUG: "..tostring(DEBUG), 10, DEBUG_MIN_HEIGHT + 100)
 
   -- Ground
   --love.graphics.setColor(139, 69, 19, 255)
@@ -723,24 +724,19 @@ function getObjCB(fixture)
   local obj = testObjs(x, y)
   if (objects.mwwatts.fixture:testPoint(x, y)) then
     currentObj = objects.mwwatts
-    DEBUG = currentObj
     return false
   elseif (objects.mwtime.fixture:testPoint(x, y)) then
     currentObj = objects.mwtime
-    DEBUG = currentObj
     return false
   elseif (objects.mwdoor.fixture:testPoint(x, y) and not objects.mwdoor.isOpen) then
     currentObj = objects.mwdoor
-    DEBUG = currentObj
     return false
   elseif (obj) then
     currentObj = obj
-    DEBUG = currentObj
     return false
   elseif (fixture:testPoint(x, y)) then
-      currentObj = body:getUserData()
-      DEBUG = currentObj
-      return false
+    currentObj = body:getUserData()
+    return false
   end
   currentObj = nil
   return true
