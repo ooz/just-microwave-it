@@ -307,8 +307,6 @@ function resetObjs()
   objects.mwbody.body:setAngle( 0 )
   objects.mwbody.body:setType("static")
   objects.mwbody.on = false
-  objects.mwdoor.isOpen = true
-  objects.mwdoor.gone = true
   objects.mwwatts.body:setPosition(gameWidth - 200 - 100 / 2, gameHeight - KITCHEN_HEIGHT - 300 + 50)
   objects.mwwatts.body:setAngle(0)
   objects.mwwatts.body:setLinearVelocity(0, 0)
@@ -317,6 +315,18 @@ function resetObjs()
   objects.mwtime.body:setAngle(0)
   objects.mwtime.body:setLinearVelocity(0, 0)
   objects.mwtime.body:setType("static")
+  objects.mwdoor.body:setPosition((gameWidth - 100) / 2, gameHeight - KITCHEN_HEIGHT - MW_HEIGHT / 2)
+  if (objects.mwdoor.mwjoint:isDestroyed()) then
+    local x, y = objects.mwbody.body:getWorldCenter()
+    objects.mwdoor.mwjoint = love.physics.newPrismaticJoint(objects.mwbody.body, objects.mwdoor.body, x, y, 1, 0, false)
+    objects.mwdoor.mwjoint:setLimitsEnabled(true)
+    objects.mwdoor.mwjoint:setLimits( -288, -2 )
+  end
+  objects.mwdoor.body:applyLinearImpulse(-4000, 0)
+  objects.mwdoor.toopen = false
+  objects.mwdoor.isOpen = true
+  objects.mwdoor.gone = false
+  objects.mwdoor.blood = false
 
   objects.catbody.body:setPosition(600, 100)
   objects.catbody.body:setLinearVelocity(0, 0)
@@ -343,6 +353,7 @@ function resetObjs()
   WOBB_ONCE = true
 
   success = love.window.showMessageBox( "Thanks for Playing!", "Just Microwave It!\
+v1.0\
 By Konstantin Freybe and Oliver Zscheyge", "info", true )
 end
 
@@ -402,11 +413,9 @@ function love.update(dt)
     love.audio.play(objects.mwdoor.slide)
     if objects.mwdoor.toopen then
       objects.mwdoor.body:applyLinearImpulse(-4000, 0)
-      --objects.mwdoor.toopen = false
       setDummiesActive(false)
     else
       objects.mwdoor.body:applyLinearImpulse(4000, 0)
-      --objects.mwdoor.toopen = true
       setDummiesActive(true)
     end
     currentObj = nil
