@@ -482,10 +482,10 @@ function love.update(dt)
 end
 
 function updateBlackHole(tAbs)
-  objects.shaders.hole.shader:send("eventH", tAbs * 100)
-  objects.shaders.hole.shader:send("escapeR", tAbs * 100)
-  objects.shaders.hole.shader:send("size", {screenWidth, screenHeight})
-  objects.shaders.hole.shader:send("pos", {screenWidth / 2, screenHeight / 2})
+  objects.shaders.hole.shader:send("eventH", tAbs * 300)
+  objects.shaders.hole.shader:send("escapeR", tAbs * 300)
+  objects.shaders.hole.shader:send("size", {gameWidth, gameWidth})
+  objects.shaders.hole.shader:send("pos", {gameWidth / 2, gameHeight / 2})
 end
 
 function updateMWTimer(dt_in_s)
@@ -493,11 +493,17 @@ function updateMWTimer(dt_in_s)
     local angle = math.abs(math.deg(objects.mwtime.body:getAngle()))
     if (angle > 0) then
       objects.mwbody.on = true
-      objects.mwtime.body:setAngle(math.rad(angle - DEGREE_PER_S * dt_in_s))
+      objects.mwbody.ding:stop()
+      local newAngle = angle - DEGREE_PER_S * dt_in_s
+      objects.mwtime.body:setAngle(math.rad(newAngle))
+      newAngle = math.floor(newAngle)
+      if newAngle == 0 then
+        objects.mwtime.body:setAngle(0)
+      end
       updatePower(dt_in_s)
-      angle = math.deg(objects.mwtime.body:getAngle())
-      if (angle <= 0) then
+      if (newAngle <= 0) then
         objects.mwbody.ding:play()
+        print("ding " .. dt_in_s)
         blowUp()
       end
     end
@@ -523,7 +529,7 @@ function blowUp()
     objects.mwdoor.mwjoint:destroy()
   end
   setDummiesActive(false)
-  objects.mwdoor.body:applyLinearImpulse(-400, -1000)
+  objects.mwdoor.body:applyLinearImpulse(-4000, -30000)
   --objects.mwbody.body:applyLinearImpulse(0, -4000)
   if (BOOM_ONCE) then
     objects.kitchen.boom:play()
