@@ -50,6 +50,7 @@ DUMMY_WIDTH = 300
 DUMMY_HEIGHT = 10
 
 local canvas
+local tBlackhole = 0
 
 function love.load()
   gameWidth = 800
@@ -83,13 +84,13 @@ function love.load()
   objects.kitchen.shape = love.physics.newRectangleShape(4 * gameWidth, KITCHEN_HEIGHT)
   objects.kitchen.fixture = love.physics.newFixture(objects.kitchen.body, objects.kitchen.shape, 1000)
   objects.kitchen.fixture:setFilterData(CATEGORY_GROUND, CATEGORY_OBJS, GROUP_ALWAYS_COLLIDE)
-  --objects.kitchen.fixture:setFriction(1.0)
   objects.kitchen.background = love.graphics.newImage("kueche.png")
   --objects.kitchen.music = love.audio.newSource("Just_Microwave_It_Titlesong.mp3")
   objects.kitchen.music = love.audio.newSource("Just_Microwave_It_Loop.mp3")
   objects.kitchen.music:setVolume(0.5)
   objects.kitchen.boom = love.audio.newSource("ggj_mwi_boom.mp3")
   objects.kitchen.boom:setVolume(1.0)
+  objects.kitchen.blacked = false
 
   -- Cat
   objects.catbody = {}
@@ -113,6 +114,9 @@ function love.load()
   objects.cathead.image = love.graphics.newImage("cat_head.png")
   objects.cathead.meow = love.audio.newSource("ggj_mwi_cat_meow.mp3")
   objects.cathead.meow:setVolume(EFFECT_VOLUME)
+  objects.cathead.boom = love.audio.newSource("ggj_mwi_katzeplatzt.mp3")
+  objects.cathead.boom:setVolume(1.0)
+  objects.cathead.boomed = false
   objects.cattail = {}
   objects.cattail.name = "cat"
   objects.cattail.body = love.physics.newBody(world, 545, 120, "dynamic")
@@ -215,12 +219,14 @@ function love.load()
   objects.mwdoor.mwjoint:setLimits( -288, -2 )
   --objects.mwdoor.mwmaxjoint = love.physics.newRopeJoint( objects.mwbody.body, objects.mwdoor.body, x, y, x, y, 300, false )
   objects.mwdoor.image = love.graphics.newImage("mwdoor.png")
+  objects.mwdoor.imageblood = love.graphics.newImage("mwdoor_splatter.png")
   objects.mwdoor.body:applyLinearImpulse(-4000, 0)
   objects.mwdoor.slide = love.audio.newSource("ggj_mwi_tuerauf_2.mp3", "static")
   objects.mwdoor.slide:setVolume(EFFECT_VOLUME)
   objects.mwdoor.toopen = false
   objects.mwdoor.isOpen = true
   objects.mwdoor.gone = false
+  objects.mwdoor.blood = false
 
   x, y = love.mouse.getPosition()
   x = screen2world(x, tX)
@@ -294,6 +300,10 @@ function setupShaders()
 end
 
 function resetObjs()
+  objects.kitchen.blacked = false
+  tBlackhole = 0
+  updateBlackHole(0)
+
   objects.mwbody.body:setPosition(gameWidth / 2, gameHeight - MW_HEIGHT / 2 - KITCHEN_HEIGHT)
   objects.mwbody.body:setLinearVelocity(0, 0)
   objects.mwbody.body:setAngle( 0 )
@@ -313,6 +323,7 @@ function resetObjs()
   objects.catbody.body:setPosition(600, 100)
   objects.catbody.body:setLinearVelocity(0, 0)
   objects.catbody.body:setType("dynamic")
+  mindTheCat(false)
 
   objects.waste.body:setPosition(700, gameHeight - 150 - 122 / 2 - KITCHEN_HEIGHT)
   objects.waste.body:setAngle(0)
@@ -478,18 +489,22 @@ function love.update(dt)
   if objects.mwbody.on and objects.mwdoor.gone then
     effect:send("time", t)
   end
-  --updateBlackHole(t)
+
+  if objects.kitchen.blacked then
+    updateBlackHole(dt)
+  end
 end
 
-function updateBlackHole(tAbs)
-  objects.shaders.hole.shader:send("eventH", tAbs * 300)
-  objects.shaders.hole.shader:send("escapeR", tAbs * 300)
+function updateBlackHole(dt)
+  tBlackhole = tBlackhole + dt
+  objects.shaders.hole.shader:send("eventH", tBlackhole * 300)
+  objects.shaders.hole.shader:send("escapeR", tBlackhole * 300)
   objects.shaders.hole.shader:send("size", {gameWidth, gameWidth})
   objects.shaders.hole.shader:send("pos", {gameWidth / 2, gameHeight / 2})
 end
 
 function updateMWTimer(dt_in_s)
-  if (objects.mwdoor.toopen) then
+  if (not objects.mwdoor.isOpen) then
     local angle = math.abs(math.deg(objects.mwtime.body:getAngle()))
     if (angle > 0) then
       objects.mwbody.on = true
@@ -504,7 +519,9 @@ function updateMWTimer(dt_in_s)
       if (newAngle <= 0) then
         objects.mwbody.ding:play()
         print("ding " .. dt_in_s)
-        blowUp()
+        --blowUp()
+        --mindTheCat(true)
+        intoTheVoid(true)
       end
     end
   end
@@ -517,6 +534,23 @@ function updatePower(dt_in_s)
     local watts_for_angle = WATTS[angle] or 0
     power = power + watts_for_angle * dt_in_s
   end
+end
+
+function mindTheCat(boomed)
+  objects.mwdoor.blood = boomed
+  objects.cathead.boomed = boomed
+  objects.catbody.body:setActive(not boomed)
+  objects.cathead.body:setActive(not boomed)
+  objects.cattail.body:setActive(not boomed)
+  objects.catfront.body:setActive(not boomed)
+  objects.catback.body:setActive(not boomed)
+  if boomed then
+    objects.cathead.boom:play()
+  end
+end
+
+function intoTheVoid(doit)
+  objects.kitchen.blacked = doit
 end
 
 function blowUp()
@@ -567,16 +601,20 @@ function love.draw()
   renderImg(objects.mwtime)
 
   -- Door (render before objects (behind) when open)
+  local mwdoorimgkey = "image"
+  if objects.mwdoor.blood then mwdoorimgkey = "imageblood" end
   if objects.mwdoor.isOpen then
-    renderImg(objects.mwdoor)
+    renderImg(objects.mwdoor, mwdoorimgkey)
   end
 
   -- Cat
-  renderImg(objects.catbody)
-  renderImg(objects.cattail)
-  renderImg(objects.catfront)
-  renderImg(objects.catback)
-  renderImg(objects.cathead)
+  if not objects.cathead.boomed then
+    renderImg(objects.catbody)
+    renderImg(objects.cattail)
+    renderImg(objects.catfront)
+    renderImg(objects.catback)
+    renderImg(objects.cathead)
+  end
 
   -- Minimicrowave
   renderImg(objects.mwmini)
@@ -586,21 +624,20 @@ function love.draw()
 
   -- Door (render last when closed)
   if not objects.mwdoor.isOpen or (not objects.mwdoor.toopen and objects.mwdoor.isOpen) then
-    renderImg(objects.mwdoor)
+    renderImg(objects.mwdoor, mwdoorimgkey)
   end
 
-
-
   -- Debug output
-  --love.graphics.print( "Power: "..tostring(power), 10, 0 )
-  --if currentObj ~= nil then
-  --  love.graphics.print( "Obj present", 10, 20 )
-  --end
-  --local x, y = love.mouse.getPosition()
-  --love.graphics.print( math.deg(objects.mwwatts.body:getAngle()), 10, 40 )
-  --love.graphics.print( math.deg(objects.mwtime.body:getAngle()), 10, 60)
-  --love.graphics.print( "Mouse: ("..x..", "..y..")", 10, 80)
-  --love.graphics.print( "DEBUG: "..tostring(DEBUG), 10, 100)
+  local DEBUG_MIN_HEIGHT = 40
+  love.graphics.print( "Power: "..tostring(power), 10, DEBUG_MIN_HEIGHT )
+  if currentObj ~= nil then
+    love.graphics.print( "Obj present", 10, DEBUG_MIN_HEIGHT + 20 )
+  end
+  local x, y = love.mouse.getPosition()
+  love.graphics.print( math.deg(objects.mwwatts.body:getAngle()), 10, DEBUG_MIN_HEIGHT + 40 )
+  love.graphics.print( math.deg(objects.mwtime.body:getAngle()), 10, DEBUG_MIN_HEIGHT + 60)
+  love.graphics.print( "Mouse: ("..x..", "..y..")", 10, DEBUG_MIN_HEIGHT + 80)
+  love.graphics.print( "DEBUG: "..tostring(DEBUG), 10, DEBUG_MIN_HEIGHT + 100)
 
   -- Ground
   --love.graphics.setColor(139, 69, 19, 255)
@@ -612,7 +649,9 @@ function love.draw()
   love.graphics.translate(tX, tY)
   love.graphics.scale(scaleFactor, scaleFactor)
   love.graphics.setBlendMode("alpha", "premultiplied")
-  --love.graphics.setShader(objects.shaders.hole.shader)
+  if objects.kitchen.blacked then
+    love.graphics.setShader(objects.shaders.hole.shader)
+  end
   love.graphics.draw(canvas)
   love.graphics.setShader()
 
@@ -632,8 +671,9 @@ function love.draw()
   love.graphics.pop()
 end
 
-function renderImg(obj)
-  love.graphics.draw(obj.image, obj.body:getX(), obj.body:getY(), obj.body:getAngle(), 1, 1, obj.image:getWidth()/2, obj.image:getHeight()/2)
+function renderImg(obj, altimgkey)
+  local key = altimgkey or "image"
+  love.graphics.draw(obj[key], obj.body:getX(), obj.body:getY(), obj.body:getAngle(), 1, 1, obj[key]:getWidth()/2, obj[key]:getHeight()/2)
 end
 
 function love.resize(w, h)
@@ -690,7 +730,7 @@ function getObjCB(fixture)
 end
 
 function testObjs(x, y)
-  if (testCat(x, y)) then
+  if (testCat(x, y) and not objects.cathead.boomed) then
     return objects.cathead
   elseif (objects.waste.fixture:testPoint(x, y)) then
     return objects.waste
